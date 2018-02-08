@@ -6,3 +6,8 @@ results/matrix/*.gz
 results/most_used/*.gz
 results/populars/*.gz
 results/most_used_data/*.gz
+results/barcodes_summary_teste.csv
+results/barcodes_summary_teste.xlsx
+*.csv
+*.png
+*.iml
