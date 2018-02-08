@@ -6,132 +6,166 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, calinski_harabaz_score
 from dataPlot import plot_best_apps_selection
 from matplotlib import pyplot as plt
+import rpy2.robjects as robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
+from rpy2.robjects import pandas2ri
+pandas2ri.activate()
+import rpy2.rlike.container as rlc
+import gc
+from scipy.spatial.distance import pdist, squareform, is_valid_y, is_valid_dm, num_obs_y, num_obs_dm
+from scipy.sparse import csr_matrix
+
+
+# from rpy2.robjects.packages import importr
 
 
 def remove_natives_pkgs(X, natives):
     X = X[~X['pkgs'].isin(natives)]
+    gc.collect()
     return X
 
 
 def select_by_min_usage(X, barcodes, pkgs_summary, minTime, minPercent):
-    old_mean = 0.
-    new_mean = 0.
-
-    fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
-    fig2, ((ax11, ax12), (ax13, ax14), (ax15, ax16)) = plt.subplots(3, 2)
-
-    w = X[X['pkgs'] == 'com.whatsapp']['duration_sec']
-    f = X[X['pkgs'] == 'com.facebook.katana']['duration_sec']
-    g = X[X['pkgs'] == 'com.android.chrome']['duration_sec']
-    wmin = w.min()
-    wmax = w.max()
-    fmin = f.min()
-    fmax = f.max()
-    gmin = g.min()
-    gmax = g.max()
-
-    t1, t4, t7 = plot_best_apps_selection(X, ax1, ax4, ax7, wmin, wmax, fmin, fmax, gmin, gmax)
-
-    ax1.xaxis.label.set_visible(False)
-    ax1.set_ylabel('Whatsapp')
-    ax2.xaxis.label.set_visible(False)
-    ax4.set_ylabel('Facebook App')
-    plt.setp(ax2.get_yticklabels(), visible=False)
-    plt.setp(ax3.get_yticklabels(), visible=False)
-    ax7.set_ylabel('Chrome')
-    ax3.xaxis.label.set_visible(False)
-    ax4.xaxis.label.set_visible(False)
-    plt.setp(ax5.get_yticklabels(), visible=False)
-    ax5.xaxis.label.set_visible(False)
-    plt.setp(ax6.get_yticklabels(), visible=False)
-    ax6.xaxis.label.set_visible(False)
-    plt.setp(ax8.get_yticklabels(), visible=False)
-    plt.setp(ax9.get_yticklabels(), visible=False)
-    plt.subplots_adjust(wspace=.045, hspace=.312, top=0.964, bottom=0.09, right=0.99, left=0.059)
-
+    # old_mean = 0.
+    # new_mean = 0.
+    #
+    # fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3)
+    # fig2, ((ax11, ax12), (ax13, ax14), (ax15, ax16)) = plt.subplots(3, 2)
+    #
+    # w = X[X['pkgs'] == 'com.whatsapp']['duration_sec']
+    # f = X[X['pkgs'] == 'com.facebook.katana']['duration_sec']
+    # g = X[X['pkgs'] == 'com.android.chrome']['duration_sec']
+    # wmin = w.min()
+    # wmax = w.max()
+    # fmin = f.min()
+    # fmax = f.max()
+    # gmin = g.min()
+    # gmax = g.max()
+    #
+    # t1, t4, t7 = plot_best_apps_selection(X, ax1, ax4, ax7, wmin, wmax, fmin, fmax, gmin, gmax)
+    #
+    # ax1.xaxis.label.set_visible(False)
+    # ax1.set_ylabel('Whatsapp')
+    # ax2.xaxis.label.set_visible(False)
+    # ax4.set_ylabel('Facebook App')
+    # plt.setp(ax2.get_yticklabels(), visible=False)
+    # plt.setp(ax3.get_yticklabels(), visible=False)
+    # ax7.set_ylabel('Chrome')
+    # ax3.xaxis.label.set_visible(False)
+    # ax4.xaxis.label.set_visible(False)
+    # plt.setp(ax5.get_yticklabels(), visible=False)
+    # ax5.xaxis.label.set_visible(False)
+    # plt.setp(ax6.get_yticklabels(), visible=False)
+    # ax6.xaxis.label.set_visible(False)
+    # plt.setp(ax8.get_yticklabels(), visible=False)
+    # plt.setp(ax9.get_yticklabels(), visible=False)
+    # plt.subplots_adjust(wspace=.045, hspace=.312, top=0.964, bottom=0.09, right=0.99, left=0.059)
+    # #
     Xn = X.copy()
-    Xdrop = pd.DataFrame()
-    Xndrop = pd.DataFrame()
-    barcodes_summary = pd.DataFrame(np.zeros((len(barcodes), 2)), index=barcodes,
-                                    columns=[['pkgs_before', 'pkgs_after']])
+    Xnn = X.copy()
+    # Xdrop = pd.DataFrame()
+    # Xndrop = pd.DataFrame()
+    barcodes_summary = pd.DataFrame(np.zeros((len(barcodes), 4)), index=barcodes,
+                                    columns=[['pkgs_before', 'pkgs_after_1%', 'pkgs_after_25%', 'pkgs_after_10%']])
     print 'selecting best apps by 1% ...'
     for barcode in barcodes:
         data = X[X['barcodes'] == barcode]
-        pkgs = data['pkgs'].unique()
+        # pkgs = data['pkgs'].unique()
         barcodes_summary.at[barcode, 'pkgs_before'] = data.shape[0]
-        old_mean += pkgs.shape[0]
+        # old_mean += pkgs.shape[0]
         total_usage = data['duration_sec'].sum()
         t1 = total_usage * minPercent
         apps_to_remove = data.groupby(['pkgs']).sum()
-        s = apps_to_remove[(apps_to_remove['duration_sec'] < minTime) |
-                           (apps_to_remove['duration_sec'] < t1)].index
+        # s = apps_to_remove[(apps_to_remove['duration_sec'] < minTime) |
+        #                    (apps_to_remove['duration_sec'] < t1)].index
         apps_to_remove = X[(X['barcodes'] == barcode) & (X['pkgs'].isin(
             apps_to_remove[(apps_to_remove['duration_sec'] < minTime) |
                            (apps_to_remove['duration_sec'] < t1)].index))].index
-        tt = X.loc[apps_to_remove]
+        # tt = X.loc[apps_to_remove]
 
-        Xdrop = pd.concat([Xdrop, X.loc[apps_to_remove]])
+        # Xdrop = pd.concat([Xdrop, X.loc[apps_to_remove]])
         X.drop(apps_to_remove, inplace=True)
         new_data = X[X['barcodes'] == barcode]
-        new_mean += new_data['pkgs'].unique().shape[0]
-        barcodes_summary.at[barcode, 'pkgs_after'] = new_data.shape[0]
-    barcodes_summary.to_csv('barcodes_summary_teste_1%.csv')
+        # new_mean += new_data['pkgs'].unique().shape[0]
+        barcodes_summary.at[barcode, 'pkgs_after_1%'] = new_data.shape[0]
+    # barcodes_summary.to_csv('barcodes_summary_teste_1%.csv')
 
-    t2, t5, t8 = plot_best_apps_selection(X, ax2, ax5, ax8, wmin, wmax, fmin, fmax, gmin, gmax)
+    # t2, t5, t8 = plot_best_apps_selection(X, ax2, ax5, ax8, wmin, wmax, fmin, fmax, gmin, gmax)
+    #
+    # wdrop = Xdrop[Xdrop['pkgs'] == 'com.whatsapp']['duration_sec']
+    # fdrop = Xdrop[Xdrop['pkgs'] == 'com.facebook.katana']['duration_sec']
+    # gdrop = Xdrop[Xdrop['pkgs'] == 'com.android.chrome']['duration_sec']
+    # wmindrop = wdrop.min()
+    # wmaxdrop = wdrop.max()
+    # fmindrop = fdrop.min()
+    # fmaxdrop = fdrop.max()
+    # gmindrop = gdrop.min()
+    # gmaxdrop = gdrop.max()
 
-    wdrop = Xdrop[Xdrop['pkgs'] == 'com.whatsapp']['duration_sec']
-    fdrop = Xdrop[Xdrop['pkgs'] == 'com.facebook.katana']['duration_sec']
-    gdrop = Xdrop[Xdrop['pkgs'] == 'com.android.chrome']['duration_sec']
-    wmindrop = wdrop.min()
-    wmaxdrop = wdrop.max()
-    fmindrop = fdrop.min()
-    fmaxdrop = fdrop.max()
-    gmindrop = gdrop.min()
-    gmaxdrop = gdrop.max()
+    # t11, t13, t15 = plot_best_apps_selection(Xdrop, ax11, ax14, ax15, wmindrop, wmaxdrop, fmindrop, fmaxdrop, gmindrop,
+    #                                          gmaxdrop)
 
-    t11, t13, t15 = plot_best_apps_selection(Xdrop, ax11, ax14, ax15, wmindrop, wmaxdrop, fmindrop, fmaxdrop, gmindrop,
-                                             gmaxdrop)
-
-    print 'selecting best apps by 25% ...'
-    barcodes_summary2 = pd.DataFrame(np.zeros((len(barcodes), 2)), index=barcodes,
-                                     columns=[['pkgs_before', 'pkgs_after']])
-
-    for barcode in barcodes:
-        apps_to_remove = []
-        data = Xn[Xn['barcodes'] == barcode]
-        barcodes_summary2.at[barcode, 'pkgs_before'] = data.shape[0]
-        pkgs = data['pkgs'].unique()
-        old_mean += pkgs.shape[0]
-
-        for pkg in pkgs:
-            if data[data['pkgs'] == pkg]['duration_sec'].values[0] < pkgs_summary.at[pkg, '25%']:
-                apps_to_remove += [data[data['pkgs'] == pkg].index.values[0]]
-
-        Xndrop = pd.concat([Xndrop, Xn.loc[apps_to_remove]])
-        Xn.drop(apps_to_remove, inplace=True)
-        new_data = Xn[Xn['barcodes'] == barcode]
-        new_mean += new_data['pkgs'].unique().shape[0]
-        barcodes_summary2.at[barcode, 'pkgs_after'] = new_data.shape[0]
-
-    Xn.reset_index(inplace=True, drop=True)
-    old_mean = old_mean / barcodes.shape[0]
-    print 'old mean ' + str(old_mean) + ' ...'
-
-    new_mean = new_mean / Xn['barcodes'].unique().shape[0]
-    print 'new mean ' + str(new_mean) + ' ...'
-
-    t3, t6, t9 = plot_best_apps_selection(Xn, ax3, ax6, ax9, wmin, wmax, fmin, fmax, gmin, gmax)
-    t12, t14, t16 = plot_best_apps_selection(Xndrop, ax12, ax14, ax16, wmindrop, wmaxdrop, fmindrop, fmaxdrop, gmindrop,
-                                             gmaxdrop)
-
-    ax1.set_title("Raw")
-    ax2.set_title("1% selection")
-    ax3.set_title("25% selection")
-
-    fig.savefig('temp.png', bbox_inches='tight', pad_inches=0)
-    barcodes_summary2.to_csv('barcodes_summary_teste_25%.csv')
-    plt.show()
-    z = 0
+    # print 'selecting best apps by 25% ...'
+    # # barcodes_summary2 = pd.DataFrame(np.zeros((len(barcodes), 2)), index=barcodes,
+    # #                                  columns=[['pkgs_before', 'pkgs_after']])
+    #
+    # for barcode in barcodes:
+    #     apps_to_remove = []
+    #     data = Xn[Xn['barcodes'] == barcode]
+    #     # barcodes_summary.at[barcode, 'pkgs_before'] = data.shape[0]
+    #     pkgs = data['pkgs'].unique()
+    #     # old_mean += pkgs.shape[0]
+    #
+    #     for pkg in pkgs:
+    #         if data[data['pkgs'] == pkg]['duration_sec'].values[0] < pkgs_summary.at[pkg, '25%']:
+    #             apps_to_remove += [data[data['pkgs'] == pkg].index.values[0]]
+    #
+    #     # Xndrop = pd.concat([Xndrop, Xn.loc[apps_to_remove]])
+    #     Xn.drop(apps_to_remove, inplace=True)
+    #     new_data = Xn[Xn['barcodes'] == barcode]
+    #     # new_mean += new_data['pkgs'].unique().shape[0]
+    #     barcodes_summary.at[barcode, 'pkgs_after_25%'] = new_data.shape[0]
+    #
+    # print 'selecting best apps by 10% ...'
+    # for barcode in barcodes:
+    #     apps_to_remove = []
+    #     data = Xnn[Xnn['barcodes'] == barcode]
+    #     # barcodes_summary.at[barcode, 'pkgs_before'] = data.shape[0]
+    #     pkgs = data['pkgs'].unique()
+    #     # old_mean += pkgs.shape[0]
+    #
+    #     for pkg in pkgs:
+    #         if data[data['pkgs'] == pkg]['duration_sec'].values[0] < pkgs_summary.at[pkg, '10%']:
+    #             apps_to_remove += [data[data['pkgs'] == pkg].index.values[0]]
+    #
+    #     # Xndrop = pd.concat([Xndrop, Xn.loc[apps_to_remove]])
+    #     Xnn.drop(apps_to_remove, inplace=True)
+    #     new_data = Xnn[Xnn['barcodes'] == barcode]
+    #     # new_mean += new_data['pkgs'].unique().shape[0]
+    #     barcodes_summary.at[barcode, 'pkgs_after_10%'] = new_data.shape[0]
+    #
+    # # Xn.reset_index(inplace=True, drop=True)
+    # # old_mean = old_mean / barcodes.shape[0]
+    # # print 'old mean ' + str(old_mean) + ' ...'
+    # #
+    # # new_mean = new_mean / Xn['barcodes'].unique().shape[0]
+    # # print 'new mean ' + str(new_mean) + ' ...'
+    # #
+    # # t3, t6, t9 = plot_best_apps_selection(Xn, ax3, ax6, ax9, wmin, wmax, fmin, fmax, gmin, gmax)
+    # # t12, t14, t16 = plot_best_apps_selection(Xndrop, ax12, ax14, ax16, wmindrop, wmaxdrop, fmindrop, fmaxdrop, gmindrop,
+    # #                                          gmaxdrop)
+    # #
+    # # ax1.set_title("Raw")
+    # # ax2.set_title("1% selection")
+    # # ax3.set_title("25% selection")
+    # #
+    # # fig.savefig('temp.png', bbox_inches='tight', pad_inches=0)
+    # barcodes_summary.to_csv('barcodes_summary_teste_all_.csv')
+    # plt.show()
+    # z = 0
+    gc.collect()
+    return X
 
 
 def get_most_used_pkgs(X, barcodes, pkgs, mostUsedPercent):
@@ -157,6 +191,7 @@ def get_most_used_pkgs(X, barcodes, pkgs, mostUsedPercent):
     # most used data to generate matrix
     most_used_data = X[X['pkgs'].isin(most_used_pkgs['pkgs'].values.tolist())]
 
+    gc.collect()
     return most_used_pkgs, most_used_data
 
 
@@ -164,6 +199,7 @@ def apps_matrix(X, barcodes, pkgs, mostUsedPercent, popularPercent, select_data)
 
     pkgs = pd.DataFrame(pkgs, columns=['pkgs'])
     # Get costumer and percent for each app
+    ####### pegar os mais usados filtrados antes da criação do summario estatistico que continuaram #####
     print 'Get costumer and percent for each app '
     for i, app in pkgs.iterrows():
         unique = float(X[X['pkgs'] == app[0]]['barcodes'].unique().shape[0])
@@ -178,6 +214,7 @@ def apps_matrix(X, barcodes, pkgs, mostUsedPercent, popularPercent, select_data)
     # most_used_pkgs.to_csv(path_result + 'most_used_' + filename, header=True, index_label='pkgs', index=False,
     #               quoting=csv.QUOTE_NONE,
     #               escapechar='\\')
+    ##################################### AQUIIIII ############################################################
 
     # Popular apps
     print 'get popular apps'
@@ -209,10 +246,11 @@ def apps_matrix(X, barcodes, pkgs, mostUsedPercent, popularPercent, select_data)
         matrix.loc[barcode][sum_by_pkg['pkgs']] = sum_by_pkg[select_data]
         z = 0
 
-    # matrix.to_csv('matrix_teste.csv')
+    matrix.to_csv('results/matrix_teste.csv')
     # matrix.to_csv(path_result + 'matrix_' + filename, header=True, index_label='barcodes', index=True, quoting=csv.QUOTE_NONE,
     #               escapechar='\\')
 
+    gc.collect()
     return matrix, most_used_pkgs, popular_pkgs, most_used_data
 
 
@@ -478,7 +516,9 @@ def discretization(matrix, populars_pkgs, most_used_pkgs, discretization_type, b
                 # new_matrix.to_csv(path_discretization + 'new_intuitive_partitioning_' + matrix_filename, header=True,
                 #                   index_label='barcodes',
                 #                   index=True, quoting=csv.QUOTE_NONE, escapechar='\\')
-
+                gc.collect()
+                del matrix
+                gc.collect()
                 return resume, ip_matrix
             else:
                 ip_matrix = ip_matrix[populars_pkgs]
@@ -486,3 +526,4 @@ def discretization(matrix, populars_pkgs, most_used_pkgs, discretization_type, b
 
     if plot is True:
         return frequency_matrix, ip_matrix
+
