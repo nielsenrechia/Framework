@@ -15,21 +15,14 @@ def association_rules(discretization):
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
-    r('memory.limit(size=16335)')
     base = importr('base')
     base.gc()
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
-    # del discretization['com.whatsapp']
-    # discretization.to_csv('discretization_teste.csv')
+    print 'pandas to r data frame ...'
     rdata = pandas_data_frame_to_rpy2_data_frame(discretization)
-    gc.collect()
-    robjects.r('rm(a)')
-    robjects.r('gc()')
-    gc.collect()
-    del discretization
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
@@ -37,55 +30,57 @@ def association_rules(discretization):
     rstring = """ 
                 function(discretization){
                     library(arules)
-                    # library(arulesViz)
-                    # library(visNetwork)
-                    # library(igraph)
-                    # data<- discretization[2:ncol(discretization)]
-                    # discretization
                     for(i in 1:ncol(discretization)) discretization[,i] <- factor(discretization[,i])
                     header <- colnames(discretization)
-                    print ('here')
                     header <- paste(header,"=0.0",sep="")
                     trans<-as(discretization, 'transactions')
+                    rm(discretization)
                     itemsets <- apriori(trans, parameter = list(supp = 0.01, target = 'closed frequent itemsets', minlen=2, maxlen=4), appearance = list(none = c(header), default = "both"))
                     quality(itemsets) <- cbind(quality(itemsets), allConfidence = interestMeasure(itemsets, measure = "allConfidence", trans))
                     quality(itemsets) <- cbind(quality(itemsets), lift = interestMeasure(itemsets, measure = "lift", trans))
-                    # quality(itemsets) <- cbind(quality(itemsets), crossSupportRatio = interestMeasure(itemsets, measure = 'crossSupportRatio', trans))
-                    # itemsets <- sort(itemsets, by="allConfidence")
                     i_1 <- subset(itemsets, subset = allConfidence > summary(itemsets@quality$allConfidence)[[4]])
-                    rules_from_itemsets <- ruleInduction(i_1, trans, confidence = 0.1, control = list( method = 'apriori'))
-                    # quality(rules_from_itemsets) <- cbind(quality(rules_from_itemsets), cosine = interestMeasure(rules_from_itemsets, measure = "cosine", trans))
-                    # quality(rules_from_itemsets) <- cbind(quality(rules_from_itemsets), chiSquared = interestMeasure(rules_from_itemsets, measure = "chiSquared", trans))
+                    rm(itemsets)
+                    rules_from_itemsets <- ruleInduction(i_1, trans, confidence = 0.1, control = list( method = 'apriori', memopt = TRUE))
+                    rm(i_1)
+                    rm(trans)
                     final_rules <- subset(rules_from_itemsets, subset = lift > 1)
+                    rm(rules_from_itemsets)
                     final_itemsets <- unique(generatingItemsets(final_rules))
+                    rm(final_rules)
                     df_final <- as(final_itemsets, "data.frame")
+                    rm(fina_itemsets)
                     df_final
                 }
             """
-
+    print 'creating r function ...'
     rfunc = robjects.r(rstring)
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
-    print r('memory.limit()')
+    print 'getting itemsets ...'
     itemsets = rfunc(rdata)
+    base.gc()
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
-    # print(robjects.r['summary'](rules))
     del rdata
+    base.gc()
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
+    print 'r data frame to pandas ...'
     itemsets = pandas2ri.ri2py(itemsets)
+    base.gc()
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
     gc.collect()
+    print 'converting pandas ...'
     itemsets = convert_r_result(itemsets)
+    base.gc()
     gc.collect()
     robjects.r('rm(a)')
     robjects.r('gc()')
@@ -113,5 +108,10 @@ def pandas_data_frame_to_rpy2_data_frame(pDataframe):
 
 
 def convert_r_result(itemsets):
-    itemsets = pd.DataFrame(itemsets['items'].str.lstrip('{').str.rstrip('}').str.split(',').tolist(), columns = ['x1', 'x2', 'x3', 'x4'])
+    data = itemsets['items'].str.lstrip('{').str.rstrip('}').str.split(',').tolist()
+    itemsets = pd.DataFrame(data)
+    l, c = itemsets.shape
+    columns = ['x'+str(i) for i in range(1, c+1)]
+    itemsets.columns = columns
     return itemsets
+

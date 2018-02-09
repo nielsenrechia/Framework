@@ -102,6 +102,7 @@ def main():
     path_most_used = 'results/most_used/'
     path_popular = 'results/populars/'
     path_most_used_data = 'results/most_used_data/'
+    path_distances = 'results/distances/'
     k = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
     col = [['ward', 'ward', 'ward', 'ward', 'ward', 'complete', 'complete', 'complete', 'complete', 'complete',
                     'average', 'average', 'average', 'average', 'average', 'single', 'single', 'single', 'single', 'single'],
@@ -109,7 +110,9 @@ def main():
                     'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1']]
     c_result = pd.DataFrame(index=k, columns=col)
     stage1 = False
-    stage2 = True
+    stage2 = False
+    stage3 = True
+    stage4 = False
 
     gc.collect()
     del col, k
@@ -221,21 +224,29 @@ def main():
             gc.collect()
 
         elif stage2:
-
+            gc.collect()
             print "association rules ..."
             discratization = pd.read_csv(path_discretization + 'discretization_' + period + '.csv.gz', index_col=0,
                                          header=0, compression='gzip')
+            gc.collect()
             itemsets = association_rules(discratization)
             gc.collect()
             itemsets.to_csv(path_rules + 'itemsets_' + period + '.csv.gz', index=True, header=True, compression='gzip')
 
-            print "distane matrix ..."
+        elif stage3:
+            discratization = pd.read_csv(path_discretization + 'discretization_' + period + '.csv.gz', index_col=0,
+                                         header=0, compression='gzip')
+            itemsets = pd.read_csv(path_rules + 'itemsets_' + period + '.csv.gz', index_col=0,
+                                         header=0, compression='gzip')
+            print "distance matrix ..."
             distances = barcodes_distance(itemsets, discratization)
             gc.collect()
 
             del discratization
             gc.collect()
+            distances.to_csv(path_distances + 'distances_' + period + '.csv.gz', index=False, header=False, compression='gzip')
 
+        elif stage4:
             print "clustering ..."
             hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, path_linkage, c_result)
 
@@ -246,7 +257,6 @@ def main():
             # barcodes = matrix['barcodes'].unique()
             # num_barcodes = barcodes.shape[0]
             # print 'new barcodes ' + str(num_barcodes) + ' ...'
-
 
 
 if __name__ == '__main__':
