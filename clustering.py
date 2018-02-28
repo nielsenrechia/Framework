@@ -33,6 +33,7 @@ def barcodes_distance(rules, discretization):
             rules4 = rules[rules['len'] == 4]
     barcodes = discretization.index.values
     m, n = discretization.shape
+    t = barcodes.shape[0]
     # x = list(np.arange(40000))
     # barcodes_reversed = list(reversed(barcodes))
     # barcodes = [1,2,3,4,5]
@@ -43,8 +44,10 @@ def barcodes_distance(rules, discretization):
     # # m = squareform(dm)
 
     all_rules = []
+    outliers = []
+    remove = []
     print 'rules ....'
-    for barcode in barcodes:
+    for i, barcode in enumerate(barcodes):
         # print 'barcode i ' + str(barcode_i)
         barcode_matrix = discretization.loc[barcode]
         barcode_matrix = barcode_matrix[(barcode_matrix != '0.0') & (barcode_matrix != 0)]
@@ -59,9 +62,15 @@ def barcodes_distance(rules, discretization):
                                         & (rules3['x3'].isin(b_list))].index)
             elif l == 4:
                 b_rules.extend(rules4.loc[(rules4['x1'].isin(b_list)) & (rules4['x2'].isin(b_list)) & (rules4['x3'].isin(b_list)) & (rules4['x4'].isin(b_list))].index)
-        all_rules += [b_rules]
+        if not b_rules:
+            outliers += [barcode]
+            remove += [i]
+        else:
+            all_rules += [b_rules]
 
     all_rules = np.array(all_rules)
+    barcodes = np.delete(barcodes, remove)
+    m = barcodes.shape[0]
     for d in xrange(2,3,1):
         print d
         #
@@ -102,7 +111,7 @@ def barcodes_distance(rules, discretization):
         # y_t = is_valid_y(y)
         # print y_t
         # dm = squareform(y)
-        return y_distances
+        return outliers, y_distances
 
 
 def hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, path_linkage, result):

@@ -103,6 +103,7 @@ def main():
     path_popular = 'results/populars/'
     path_most_used_data = 'results/most_used_data/'
     path_distances = 'results/distances/'
+    path_outliers = 'results/outliers/'
     k = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
     col = [['ward', 'ward', 'ward', 'ward', 'ward', 'complete', 'complete', 'complete', 'complete', 'complete',
                     'average', 'average', 'average', 'average', 'average', 'single', 'single', 'single', 'single', 'single'],
@@ -231,7 +232,7 @@ def main():
             gc.collect()
             itemsets = association_rules(discratization)
             gc.collect()
-            itemsets.to_csv(path_rules + 'itemsets_' + period + '.csv.gz', index=True, header=True, compression='gzip')
+            itemsets.to_csv(path_rules + 'itemsets2_' + period + '.csv.gz', index=True, header=True, compression='gzip')
 
         elif stage3:
             discratization = pd.read_csv(path_discretization + 'discretization_' + period + '.csv.gz', index_col=0,
@@ -239,12 +240,13 @@ def main():
             itemsets = pd.read_csv(path_rules + 'itemsets_' + period + '.csv.gz', index_col=0,
                                          header=0, compression='gzip')
             print "distance matrix ..."
-            distances = barcodes_distance(itemsets, discratization)
+            outliers, distances = barcodes_distance(itemsets, discratization)
             gc.collect()
 
             del discratization
             gc.collect()
             distances.to_csv(path_distances + 'distances_' + period + '.csv.gz', index=False, header=False, compression='gzip')
+            pd.DataFrame(outliers).to_csv(path_outliers + 'outliers_' + period + 'csv.gz', index=False, header=False, compression='gzip')
 
         elif stage4:
             print "clustering ..."

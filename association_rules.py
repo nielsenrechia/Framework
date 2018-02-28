@@ -45,6 +45,8 @@ def association_rules(discretization):
                     rm(trans)
                     final_rules <- subset(rules_from_itemsets, subset = lift > 1)
                     rm(rules_from_itemsets)
+                    # final_rules <- as(final_rules, "data.frame")
+                    # final_rules
                     final_itemsets <- unique(generatingItemsets(final_rules))
                     rm(final_rules)
                     df_final <- as(final_itemsets, "data.frame")
