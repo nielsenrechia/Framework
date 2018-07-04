@@ -2,7 +2,7 @@
 """Framework script"""
 import sys
 # from dateutil import parser
-from utils.bigquery import return_bq_query
+# from utils.bigquery import return_bq_query
 # from dataPlot import plot_best_apps, plot_discretization
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
@@ -54,7 +54,7 @@ def query_data(table, bars, natives, start_date=None, end_date=None):
 
 
 def main():
-    """"Images configuration."""
+    """Image configuration."""
     # SMALL_SIZE = 13
     # MEDIUM_SIZE = 18
     # BIGGER_SIZE = 23
@@ -67,7 +67,7 @@ def main():
     # plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
     # plt.rc('figure', titlesize=BIGGER_SIZE)   # fontsize of the figure title
 
-    """Main entry point for the script."""
+    """ Configuration to extract data from BigQuery"""
     startDate = '2017-06-05'
     endDate = '2017-10-23'
     frequency = '7D'
@@ -78,6 +78,7 @@ def main():
     natives = "('com.android.systemui', 'com.google.android.packageinstaller', 'com.android.packageinstaller', " \
               "'android', 'com.motorola.setup', 'com.motorola.storageoptimizer', 'com.motorola.motocit', " \
               "'com.motorola.android.provisioning', 'com.google.android.setupwizard', 'com.android.stk')"
+    dates = pd.date_range(startDate, endDate, freq=frequency)
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c')"
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c', 'ied733fe5ec38ee9f11931fe38d98be89865b33751')"
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c', 'ied733fe5ec38ee9f11931fe38d98be89865b33751'," \
@@ -85,6 +86,8 @@ def main():
     #        "'ie7574c01a7812d2ac12043abc50a3e4c2089294ea', 'ie6edd41b6fb2e2a7feee6a02c879160e2f4b89510'," \
     #        "'iedb938860c998fdc4ffb6b72146b75c3dc688fd2f', 'ieaed3d729b4638a80c9029df3203a1fd8aa693663')"
     bars = None
+
+    """ Configuration to data preprocess"""
     thresholds = [0.92, 0.97]
     minTime = 70.
     minPercent = 0.01
@@ -92,8 +95,18 @@ def main():
     popularsPercent = 0.1
     discretization_type = ['ip'] #['frequency', 'ip', 'clustering']
     selection_type = ['1%']
+
+    """ Configuration to data clustering"""
     methods = ['complete', 'ward', 'average', 'weighted']
     max_nc = 30
+    k = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+    col = [['ward', 'ward', 'ward', 'ward', 'ward', 'complete', 'complete', 'complete', 'complete', 'complete',
+            'average', 'average', 'average', 'average', 'average', 'single', 'single', 'single', 'single', 'single'],
+           ['sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw',
+            'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1']]
+    c_result = pd.DataFrame(index=k, columns=col)
+
+    """ Paths to save/read data"""
     path_labels = 'results/labels/'
     path_linkage = 'results/linkage/'
     path_rules = 'results/rules/'
@@ -104,31 +117,21 @@ def main():
     path_most_used_data = 'results/most_used_data/'
     path_distances = 'results/distances/'
     path_outliers = 'results/outliers/'
-    k = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-    col = [['ward', 'ward', 'ward', 'ward', 'ward', 'complete', 'complete', 'complete', 'complete', 'complete',
-                    'average', 'average', 'average', 'average', 'average', 'single', 'single', 'single', 'single', 'single'],
-                   ['sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw',
-                    'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1']]
-    c_result = pd.DataFrame(index=k, columns=col)
-    stage1 = False
-    stage2 = False
-    stage3 = True
-    stage4 = False
 
-    gc.collect()
-    del col, k
-    gc.collect()
+    """ Configuration of stages to be executed """
+    BQ = False
+    AR = False
+    DM = False
+    CL = True
 
-    dates = pd.date_range(startDate, endDate, freq=frequency)
-
-    print "BigQuery sql ..."
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
         start_date = dates[d]
         end_date = dates[d + 1]
         period = str(start_date.date()) + '_' + str(end_date.date())
 
-        if stage1:
+        if BQ:
+            print "BigQuery sql ..."
             hours = pd.date_range(start_date, end_date, freq='4H')
 
             for h in xrange(len(hours) - 1):
@@ -224,7 +227,7 @@ def main():
             del matrix
             gc.collect()
 
-        elif stage2:
+        if AR:
             gc.collect()
             print "association rules ..."
             discratization = pd.read_csv(path_discretization + 'discretization_' + period + '.csv.gz', index_col=0,
@@ -234,7 +237,7 @@ def main():
             gc.collect()
             itemsets.to_csv(path_rules + 'itemsets2_' + period + '.csv.gz', index=True, header=True, compression='gzip')
 
-        elif stage3:
+        if DM:
             discratization = pd.read_csv(path_discretization + 'discretization_' + period + '.csv.gz', index_col=0,
                                          header=0, compression='gzip')
             itemsets = pd.read_csv(path_rules + 'itemsets_' + period + '.csv.gz', index_col=0,
@@ -248,8 +251,12 @@ def main():
             distances.to_csv(path_distances + 'distances_' + period + '.csv.gz', index=False, header=False, compression='gzip')
             pd.DataFrame(outliers).to_csv(path_outliers + 'outliers_' + period + 'csv.gz', index=False, header=False, compression='gzip')
 
-        elif stage4:
+        if CL:
             print "clustering ..."
+
+            distances = pd.read_csv(path_distances + 'distances_' + period + '.csv.gz', index_col=None,
+                                         header=None, compression='gzip', nrows=1225)
+            x = distances.values
             hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, path_linkage, c_result)
 
             gc.collect()

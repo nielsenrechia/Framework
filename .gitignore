@@ -11,3 +11,5 @@ results/barcodes_summary_teste.xlsx
 *.csv
 *.png
 *.iml
+
+results/

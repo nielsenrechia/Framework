@@ -142,7 +142,7 @@ def hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, pat
         gc.collect()
         lpd = pd.DataFrame(l)
         print 'saving linkage matrix ...'
-        lpd.to_csv(path_linkage + 'linkage_y_' + period + '_' + method + '.csv.gz', index=False, header=False, compression='gzip')
+        lpd.to_csv(path_linkage + 'tese_linkage_y_' + period + '_' + method + '.csv.gz', index=False, header=False, compression='gzip')
         print 'cleaning memory 4 ....'
         del lpd
         gc.collect()
