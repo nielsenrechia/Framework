@@ -3,7 +3,7 @@
 import sys
 # from dateutil import parser
 # from utils.bigquery import return_bq_query
-# from dataPlot import plot_best_apps, plot_discretization
+from dataPlot import plot_best_apps, plot_discretization, plot_dendrogram
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
 from clustering import barcodes_distance, hac_clustering_barcodes
@@ -11,9 +11,7 @@ import pandas as pd
 from datetime import datetime as dt
 import numpy as np
 import gc
-
-
-# from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 
 
 def query_data(table, bars, natives, start_date=None, end_date=None):
@@ -55,17 +53,17 @@ def query_data(table, bars, natives, start_date=None, end_date=None):
 
 def main():
     """Image configuration."""
-    # SMALL_SIZE = 13
-    # MEDIUM_SIZE = 18
-    # BIGGER_SIZE = 23
-    #
-    # plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
-    # plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
-    # plt.rc('axes', labelsize=BIGGER_SIZE)     # fontsize of the x and y labels
-    # plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
-    # plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
-    # plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-    # plt.rc('figure', titlesize=BIGGER_SIZE)   # fontsize of the figure title
+    SMALL_SIZE = 12
+    MEDIUM_SIZE = 16
+    BIGGER_SIZE = 22
+
+    plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+    plt.rc('axes', titlesize=MEDIUM_SIZE)  # fontsize of the axes title
+    plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+    plt.rc('figure', titlesize=MEDIUM_SIZE)  # fontsize of the figure title
 
     """ Configuration to extract data from BigQuery"""
     startDate = '2017-06-05'
@@ -97,16 +95,26 @@ def main():
     selection_type = ['1%']
 
     """ Configuration to data clustering"""
-    methods = ['complete', 'ward', 'average', 'weighted']
+    methods = ['ward']
+    # methods = ['complete', 'single', 'average', 'weighted']
     max_nc = 30
-    k = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-    col = [['ward', 'ward', 'ward', 'ward', 'ward', 'complete', 'complete', 'complete', 'complete', 'complete',
-            'average', 'average', 'average', 'average', 'average', 'single', 'single', 'single', 'single', 'single'],
-           ['sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1', 'sse', 'sw',
-            'std', 'armonica', 'armonica_1', 'sse', 'sw', 'std', 'armonica', 'armonica_1']]
+    min_nc = 2
+    Brefs = 20
+    res = ['sse', 'sw', 'std', 'armonica', 'armonica_1', 'ch', 'OrigWk', 'OrigLogWk', 'Gap', 'ElogW', 'GapSdSk', 'Sk', 'Sd']
+    best_res = ['1K', 'res1', '2K', 'res2', '3K', 'res3']
+    metrics = ['SW', 'KNEE', 'CH', 'GAP']
+    col = []
+    col_best = []
+    for i in methods:
+        col += i.split(' ') * len(res)
+        col_best += i.split(' ') * len(metrics)
+    k = list(xrange(min_nc, max_nc+1))
+    col = [col, res * len(methods)]
+    col_best = [col_best, metrics * len(methods)]
     c_result = pd.DataFrame(index=k, columns=col)
+    best_result = pd.DataFrame(index=col_best, columns=best_res)
 
-    """ Paths to save/read data"""
+    """Paths to save/read data"""
     path_labels = 'results/labels/'
     path_linkage = 'results/linkage/'
     path_rules = 'results/rules/'
@@ -117,12 +125,14 @@ def main():
     path_most_used_data = 'results/most_used_data/'
     path_distances = 'results/distances/'
     path_outliers = 'results/outliers/'
+    path_dendrograms = 'results/dendrograms/'
 
     """ Configuration of stages to be executed """
     BQ = False
     AR = False
     DM = False
-    CL = True
+    CL = False
+    PD = True
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
@@ -207,19 +217,25 @@ def main():
             gc.collect()
 
             matrix.to_csv(path_matrix + 'matrix_' + period + '.csv.gz', index=True, header=True, compression='gzip')
-            most_used_pkgs.to_csv(path_most_used + 'most_used_' + period + '.csv.gz', index=True, header=True, compression='gzip')
-            populars_pkgs.to_csv(path_popular + 'populars_' + period + '.csv.gz', index=True, header=True, compression='gzip')
-            X.to_csv(path_most_used_data + 'most_used_data_' + period + '.csv.gz', index=True, header=True, compression='gzip')
+            most_used_pkgs.to_csv(path_most_used + 'most_used_' + period + '.csv.gz', index=True, header=True,
+                                  compression='gzip')
+            populars_pkgs.to_csv(path_popular + 'populars_' + period + '.csv.gz', index=True, header=True,
+                                 compression='gzip')
+            X.to_csv(path_most_used_data + 'most_used_data_' + period + '.csv.gz', index=True, header=True,
+                     compression='gzip')
 
             del X
             gc.collect()
 
             print "discretization ..."
             # teste = plot_discretization(matrix, populars_pkgs, most_used_pkgs, barcodes, discretization)
-            summary, discratization = discretization(matrix, populars_pkgs,  most_used_pkgs, discretization_type, barcodes)
+            summary, discratization = discretization(matrix, populars_pkgs,  most_used_pkgs, discretization_type,
+                                                     barcodes)
             gc.collect()
-            discratization.to_csv(path_discretization + 'discretization_' + period + '.csv.gz', index=True, header=True, compression='gzip')
-            summary.to_csv(path_discretization + 'summary_' + period + '.csv.gz', index=True, header=True, compression='gzip')
+            discratization.to_csv(path_discretization + 'discretization_' + period + '.csv.gz', index=True,
+                                  header=True, compression='gzip')
+            summary.to_csv(path_discretization + 'summary_' + period + '.csv.gz', index=True, header=True,
+                           compression='gzip')
             # z = 0
 
             del most_used_pkgs
@@ -248,24 +264,33 @@ def main():
 
             del discratization
             gc.collect()
-            distances.to_csv(path_distances + 'distances_' + period + '.csv.gz', index=False, header=False, compression='gzip')
-            pd.DataFrame(outliers).to_csv(path_outliers + 'outliers_' + period + 'csv.gz', index=False, header=False, compression='gzip')
+            distances.to_csv(path_distances + 'distances_' + period + '.csv.gz', index=False, header=False,
+                             compression='gzip')
+            pd.DataFrame(outliers).to_csv(path_outliers + 'outliers_' + period + '.csv.gz', index=False, header=False,
+                                          compression='gzip')
 
         if CL:
             print "clustering ..."
 
-            distances = pd.read_csv(path_distances + 'distances_' + period + '.csv.gz', index_col=None,
-                                         header=None, compression='gzip', nrows=1225)
+            matrix = pd.read_csv(path_matrix + 'matrix_' + period + '.csv.gz', index_col=0, header=0,
+                                 compression='gzip', nrows=None)
+            outliers = pd.read_csv(path_outliers + 'outliers_' + period + 'csv.gz', index_col=None, header=None)
+            matrix = matrix[~matrix.index.isin(outliers[0])]
+            distances = pd.read_csv(path_distances + 'distances_' + period + '.csv.gz', index_col=None, header=None,
+                                    compression='gzip', nrows=None)
             x = distances.values
-            hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, path_linkage, c_result)
+            results = hac_clustering_barcodes(matrix.values, distances, methods, max_nc, min_nc, Brefs, path_labels, period,
+                                    path_linkage, c_result, best_result)
 
             gc.collect()
-            # pkgs = matrix['pkgs'].unique()
-            # num_pkgs = pkgs.shape[0]
-            # print 'new all pkgs ' + str(num_pkgs) + ' ...'
-            # barcodes = matrix['barcodes'].unique()
-            # num_barcodes = barcodes.shape[0]
-            # print 'new barcodes ' + str(num_barcodes) + ' ...'
+        #
+        if PD:
+            clusters = [6,5,5,4,7,5,4,7,5,5]
+            for method in methods:
+                l = pd.read_csv(path_linkage + 'linkage_y_' + period + '_' + method + '.csv.gz', index_col=None, header=None)
+                plot_dendrogram(l, path_dendrograms, period, method, clusters[d])
+            if d == 9:
+                z = 0
 
 
 if __name__ == '__main__':

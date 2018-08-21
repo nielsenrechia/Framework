@@ -2,22 +2,16 @@
 import pandas as pd
 import numpy as np
 from numpy import inf
-from math import ceil
-from sklearn.cluster import KMeans
+from utils.clustering_validity import gap_statistic, swc, calculate_dispersion, ch
+from dataPlot import plot_gap, plot_ch, plot_knee, plot_silhouette, plot_dendrogram
 from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, inconsistent, maxdists, maxinconsts, is_monotonic
 from scipy.stats import hmean
-from sklearn.metrics import silhouette_score, calinski_harabaz_score
-import rpy2.robjects as robjects
-import rpy2.robjects.numpy2ri
-rpy2.robjects.numpy2ri.activate()
-from rpy2.robjects import pandas2ri
-pandas2ri.activate()
-import rpy2.rlike.container as rlc
-import gc
 from scipy.spatial.distance import pdist, squareform, is_valid_y, is_valid_dm, num_obs_y, num_obs_dm
 from scipy.sparse import csr_matrix
 import gc
-import csv
+from scipy.cluster.hierarchy import linkage, fcluster
+from matplotlib import pyplot as plt
+from numba import jit
 
 
 def barcodes_distance(rules, discretization):
@@ -114,7 +108,7 @@ def barcodes_distance(rules, discretization):
         return outliers, y_distances
 
 
-def hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, path_linkage, result):
+def hac_clustering_barcodes(X, distances, methods, max_nc, min_nc, Brefs, path_labels, period, path_linkage, result, best_res):
 
     print "replacing inf values....."
     distances = distances.replace(inf, np.float32(1.79e+30))
@@ -135,129 +129,160 @@ def hac_clustering_barcodes(distances, methods, max_nc, path_labels, period, pat
     gc.collect()
 
     for method in methods:
-        # if method == 'single':
+
         print 'method ' + method + ' ...'
+
         l = linkage(distances, method=method)
         print 'cleaning memory 2 ....'
         gc.collect()
         lpd = pd.DataFrame(l)
         print 'saving linkage matrix ...'
-        lpd.to_csv(path_linkage + 'tese_linkage_y_' + period + '_' + method + '.csv.gz', index=False, header=False, compression='gzip')
+        lpd.to_csv(path_linkage + 'linkage_y_' + period + '_' + method + '.csv.gz', index=False, header=False,
+                   compression='gzip')
         print 'cleaning memory 4 ....'
         del lpd
         gc.collect()
 
-        # print 'dendogram...'
-        # fancy_dendrogram(
-        #     l,
-        #     truncate_mode='lastp',  # show only the last p merged clusters
-        #     p=50,  # show only the last p merged clusters # sept = 80
-        #     show_leaf_counts=True,  # otherwise numbers in brackets are counts
-        #     leaf_rotation=90.,  # rotates the x axis labels
-        #     leaf_font_size=12.,  # font size for the x axis labels
-        #     show_contracted=True,  # to get a distribution impression in truncated branches
-        #     annotate_above=50,   # sept = 10000
-        #     max_d=50    # sept = 158000, jan athen 1.578e+102 or 1.628e+102
-        # )
-        # plt.show()
-        # z = 0
+        r, f = X.shape
+        origLogW = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        origW = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        gaps = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        ElogW = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        GapSdSk = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        Sd = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        Sk = np.zeros(len(xrange(min_nc, max_nc + 1)))
+        bestk = []
+        silhouette = [None] * (max_nc - min_nc + 1)
+        stds = [None] * (max_nc - min_nc + 1)
+        armonicas = [None] * (max_nc - min_nc + 1)
+        armonicas_1 = [None] * (max_nc - min_nc + 1)
+        calisnki = [None] * (max_nc - min_nc + 1)
 
-        print 'Starting Silhouette score...'
-        silhouette = []
-        stds = []
-        armonicas = []
-        armonicas_1 = []
-        # #
-        for k in xrange(2, max_nc+1):
-            labels = fcluster(l, k, 'maxclust')
-            z = 0
-            if len(np.unique(labels)) > 1:
-                silhouette += [round(silhouette_score(squareform(distances), labels, metric='precomputed'), 3)]
-                print 'Silhouette score for k = ' + str(k) + ' is ' + str(silhouette[k - 2]) + ' ...'
-                unique, counts = np.unique(labels, return_counts=True)
-                stds += [np.std(counts)]
-                armonicas += [hmean(counts)]
-                armonicas_1 += [1 / np.sum(1.0/counts, axis=0)]
-            else:
-                silhouette += [0.0]
-                stds += ['no']
-                armonicas += ['no']
-                armonicas_1 += ['no']
-            labels = pd.DataFrame(labels)
-            labels.to_csv(path_labels + 'labels_' + period + '_' + method + '_' + str(k) + '.csv', header=False,
-                          index=True)
+        for index, k in enumerate(xrange(min_nc, max_nc + 1)):
+
+            print 'GAP score for k = ' + str(k)
+
+            labels = fcluster(l, k, 'maxclust').reshape(-1, 1)
+            x = np.concatenate((X, labels), axis=1)
+            origW[index] = calculate_dispersion(x, labels)
+            origLogW[index] = np.log(origW[index])
+
+            gaps[index], ElogW[index], Sd[index], Sk[index] = gap_statistic(X, k, origLogW[index], r, f,
+                                                                            method=method, brefs=Brefs)
+
+            if index > 0:
+                GapSdSk[index - 1] = gaps[index - 1] - gaps[index] - Sk[index]
+                if gaps[index - 1] >= gaps[index] - Sk[index]:
+                    bestk.append(index - 1)
+
             print 'cleaning memory ....'
             gc.collect()
 
-        #
-        # sw_result = []
-        # if len(silhouette) > 2:
-        #     i_max_s = silhouette.index(max(silhouette))+2
-        #     max_s = max(silhouette)
-        #     silhouette = np.array(silhouette)
-        #     i_max_s_2 = silhouette.argsort()[-2:][0] + 2
-        #     i_max_s_3 = silhouette.argsort()[-3:][0] + 2
-        #     max_s_2 = silhouette[i_max_s_2-2]
-        #     max_s_3 = silhouette[i_max_s_3-2]
-        #
-        #     sw_result += [i_max_s, max_s, i_max_s_2, max_s_2, i_max_s_3, max_s_3]
-        # else:
-        #     sw_result += ['no', 'no', 'no', 'no', 'no', 'no']
+            print 'Silhouette score for k = ' + str(k)
 
-        # aquiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
-        # knee = np.diff(l[::-1, 2], 2)[:29]
-        #
-        # results = np.column_stack((np.array(knee), np.array(silhouette), np.array(stds), np.array(armonicas),
-        #                            np.array(armonicas_1)))
-        # result[method] = results
-        # aquiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
+            silhouette[index], stds[index], armonicas[index], armonicas_1[index] = swc(labels, distances)
 
+            print 'cleaning memory ....'
+            gc.collect()
 
-        # num_clust = knee.argmax() + 2  # posicoa do maior valor (+2 pq cluster comeca em 2 e posicao em 0)
-        # r_num_clust = round(knee[knee.argmax()], 2)
-        # num_clust2 = knee.argsort()[-2:][0] + 2
-        # r_num_clust_2 = round(knee[knee.argsort()[-2:][0]], 2)
-        # num_clust3 = knee.argsort()[-3:][0] + 2
-        # r_num_clust_3 = round(knee[knee.argsort()[-3:][0]], 2)
-        #
-        # SSE_result = []
-        # SSE_result += [num_clust, r_num_clust, num_clust2, r_num_clust_2, num_clust3, r_num_clust_3]
-        # z = 0
+            print 'Calisnki H score for k = ' + str(k)
+            calisnki[index] = ch(X, labels)
 
-        # gc.collect()
+            print 'cleaning memory ....'
+            gc.collect()
 
-        # distance_matrix = squareform(distances)
-        #
-        # n_objects, n_objects = distance_matrix.shape
-        # n_clusters = np.unique(labels).shape[0]
-        #
-        # if n_clusters > 1:
-        #
-        #     # smallest inter-cluster distance divided biggest intra-cluster distance
-        #
-        #     inter_cluster = np.inf
-        #     intra_cluster = -np.inf
-        #
-        #     for i in xrange(n_objects):
-        #         for j in xrange(i, n_objects):
-        #             if labels[i] == labels[j]:
-        #                 if distance_matrix[i, j] > intra_cluster:
-        #                     intra_cluster = distance_matrix[i, j]
-        #             else:
-        #                 if distance_matrix[i, j] < inter_cluster:
-        #                     inter_cluster = distance_matrix[i, j]
-        #
-        #     index = float(inter_cluster) / float(intra_cluster)
-        #     # if there is only one cluster, then the index is zero because the smallest distance between
-        #     # two clusters is also zero
-        #     if np.isnan(index):
-        #         index = np.nan_to_num(index)
+            labels = pd.DataFrame(labels)
+            labels.to_csv(path_labels + 'labels_' + period + '_' + method + '_' + str(k) + '.csv',
+                          header=False, index=True)
 
-        #
-        # all_results = SSE_result + sw_result
+        print 'cleaning memory ....'
+        gc.collect()
 
-        # result.set_value(week, method, all_results)
+        print 'Getting best GAP ...'
+        gap_optimal = np.min(bestk) + min_nc
+        gap_r = gaps[gap_optimal-min_nc]
+        gap2 = np.partition(bestk, 1)[1]+min_nc
+        gap_r2 = gaps[gap2 - min_nc]
+        gap3 = np.partition(bestk, 2)[2]+min_nc
+        gap_r3 = gaps[gap3 - min_nc]
+        gaps_r = [gap_optimal, gap_r, gap2, gap_r2, gap3, gap_r3]
 
-    # result.to_csv(path_labels + 'clustering_evaluation' + period + '.csv', header=True, index=True,
-    #               quoting=csv.QUOTE_NONE, escapechar='\\')
+        print 'cleaning memory ....'
+        gc.collect()
+
+        print 'Getting best Silhouette ...'
+        SmaxI = silhouette.index(max(silhouette))+min_nc
+        Smax = max(silhouette)
+        silhouette = np.array(silhouette)
+        Smax2I = silhouette.argsort()[-2:][0] + min_nc
+        Smax3I = silhouette.argsort()[-3:][0] + min_nc
+        Smax2 = silhouette[Smax2I-min_nc]
+        Smax3 = silhouette[Smax3I-min_nc]
+        sw_result = [SmaxI, Smax, Smax2I, Smax2, Smax3I, Smax3]
+
+        print 'cleaning memory ....'
+        gc.collect()
+
+        print 'Getting best Knee ...'
+        knee = np.diff(l[::-1, 2], 2)[:max_nc-min_nc+1]
+        num_clust = knee.argmax() + 3  # posicoa do maior valor (+3 pq cluster comeca em 2 e posicao em 0)
+        r_num_clust = round(knee[knee.argmax()], 2)
+        num_clust2 = knee.argsort()[-2:][0] + 3
+        r_num_clust_2 = round(knee[knee.argsort()[-2:][0]], 2)
+        num_clust3 = knee.argsort()[-3:][0] + 3
+        r_num_clust_3 = round(knee[knee.argsort()[-3:][0]], 2)
+        SSE_result = [num_clust, r_num_clust, num_clust2, r_num_clust_2, num_clust3, r_num_clust_3]
+
+        print 'cleaning memory ....'
+        gc.collect()
+
+        print 'Getting best CH ...'
+        CH_result = []
+        CHmaxI = calisnki.index(max(calisnki)) + min_nc
+        CHmax = max(calisnki)
+        calisnki = np.array(calisnki)
+        CHmax2I = calisnki.argsort()[-2:][0] + min_nc
+        CHmax3I = calisnki.argsort()[-3:][0] + min_nc
+        CHmax2 = calisnki[CHmax2I - min_nc]
+        CHmax3 = calisnki[CHmax3I - min_nc]
+        CH_result += [CHmaxI, CHmax, CHmax2I, CHmax2, CHmax3I, CHmax3]
+
+        print 'cleaning memory ....'
+        gc.collect()
+
+        results = np.column_stack((knee, silhouette, np.array(stds), np.array(armonicas),
+                                   np.array(armonicas_1), calisnki, origW, origLogW, gaps, ElogW, GapSdSk, Sk, Sd))
+
+        result[method] = results
+
+        best_final = np.concatenate(
+            (np.array([sw_result]), np.array([SSE_result]), np.array([CH_result]), np.array([gaps_r])), axis=0)
+
+        best_res.ix[method] = best_final
+
+        gap_results_2 = result[method][["OrigWk", "OrigLogWk", "Gap", "ElogW", "GapSdSk"]].astype(float)
+
+        print 'cleaning memory ....'
+        gc.collect()
+
+        print 'Saving KNEE plot ...'
+        plot_knee(max_nc, min_nc, l, num_clust, period, method, path_labels)
+
+        print 'Saving GAP plot ...'
+        plot_gap(max_nc, min_nc, gap_optimal, gap_results_2, period, method, path_labels)
+
+        print 'Saving Silhouette plot ...'
+        plot_silhouette(max_nc, min_nc, SmaxI, silhouette, period, method, path_labels)
+
+        print 'Saving CH plot ...'
+        plot_ch(max_nc, min_nc, CHmaxI, calisnki, period, method, path_labels)
+
+        print 'cleaning memory ....'
+        gc.collect()
+
+    best_res.to_csv(path_labels + 'clustering_best_' + period + '.csv', header=True, index=True)
+    result.to_csv(path_labels + 'clustering_evaluation_' + period + '.csv', header=True, index=True)
+
     print 'fim ...............................................................'
+
+    return best_res

@@ -1,10 +1,11 @@
-# encoding=utf8
+#encoding=utf8
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from math import floor
 import itertools
 import seaborn as sns
+from scipy.cluster.hierarchy import dendrogram
 
 
 def get_idxs(max):
@@ -158,3 +159,124 @@ def plot_best_apps_selection(X, ax1, ax2, ax3, wmin, wmax, fmin, fmax, gmin, gma
     ax3.set_ylim(0, 0.0004)
     z = sns.distplot(t, ax=ax3, color='y', bins=50)
     return x, y, z
+
+
+def fancy_dendrogram(*args, **kwargs):
+    max_d = kwargs.pop('max_d', None)
+    if max_d and 'color_threshold' not in kwargs:
+        kwargs['color_threshold'] = max_d
+    annotate_above = kwargs.pop('annotate_above', 0)
+
+    ddata = dendrogram(*args, **kwargs)
+
+    # dados = ddata['dcoord'][-1]
+    # max_d = max(dados)
+
+    if not kwargs.get('no_plot', False):
+        plt.title('Hierarchical Clustering Dendrogram (truncated)')
+        plt.xlabel('sample index or (cluster size)')
+        plt.ylabel('distance')
+        for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
+            x = 0.5 * sum(i[1:3])
+            y = d[1]
+            if y > annotate_above:
+                plt.plot(x, y, 'o', c=c)
+                plt.annotate("%.3g" % y, (x, y), xytext=(0, -5),
+                             textcoords='offset points',
+                             va='top', ha='center')
+        if max_d:
+            plt.axhline(y=max_d, c='k')
+
+
+def plot_dendrogram(l, path_dendrograms, period, method, clusters):
+    plt.clf()
+    print 'dendogram...'
+    fancy_dendrogram(
+        l,
+        truncate_mode='lastp',  # show only the last p merged clusters
+        p=40,  # show only the last p merged clusters # sept = 80
+        show_leaf_counts=True,  # otherwise numbers in brackets are counts
+        leaf_rotation=90.,  # rotates the x axis labels
+        leaf_font_size=11.,  # font size for the x axis labels
+        show_contracted=True,  # to get a distribution impression in truncated branches
+        annotate_above=l.iloc[-13:-12, 2].values,
+        max_d=l.iloc[-clusters:-clusters+1, 2].values + 0.05e+31   # sept = 158000, jan athen 1.578e+102 or 1.628e+102
+    )
+    plt.tight_layout()
+    plt.savefig(path_dendrograms + 'dendrogram_' + period + '_' + method + '2.png', bbox_inches='tight', pad_inches=0)
+    z = 0
+
+
+def plot_gap(maxClusters, min_nc, optimal, gap_results, period, method, path_labels):
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig.subplots_adjust(left=0.2, wspace=0.6)
+
+    # ax1.scatter(X["x"], X["y"])
+    ax1.plot(xrange(min_nc, maxClusters + 1), gap_results['OrigWk'].values, linestyle='-', color='green', marker='o',
+             linewidth=2)
+    ax1.set_ylabel(r"$Wk$")
+    # r"$W_{k} = \sum_{r=1}^{k}\frac{1}{2n_{r}}\sum_{i,i' \in C_{r}}d_{ii'}$"
+    ax2.plot(xrange(min_nc, maxClusters + 1), gap_results['OrigLogWk'].values, linestyle='-', color='red', marker='o',
+             linewidth=2, label=r"$log(W_{k})$")
+    # r"$log(W_{k})$"
+    ax2.plot(xrange(min_nc, maxClusters + 1), gap_results['ElogW'].values, linestyle='-', color='blue', marker='o',
+             linewidth=2, label=r"$E^{*}_{n}log(W^{*}_{k}) = \frac{1}{B}\sum_{b=1}^{B}log(W^{*}_{kb})$")
+    # r"$E^{*}_{n}log(W^{*}_{k}) = \frac{1}{B}\sum_{b=1}^{B}log(W^{*}_{kb})$"
+    # ax2.set_ylabel('Raw data log(Wk) / Average of LogWk from B references')
+    ax3.plot(xrange(min_nc, maxClusters + 1), gap_results['Gap'].values, linestyle='-', color='green', marker='o',
+             linewidth=2)
+    # r"$Gap(k) = E^{*}_{n}log(W^{*}_{k}) - log(W_{k})$"
+    ax3.set_ylabel('Gap values')
+    ax3.axvline(x=optimal, color='green', linestyle="--", linewidth=2)
+    # ax3.text(optimal - 1, 0.01, 'Optimal K ->', ha='center', va='center', size=16)
+    ax4.bar(xrange(min_nc, maxClusters + 1), gap_results['GapSdSk'].values)
+    ax4.set_ylabel(r"$Gap(k)-(Gap(k+1)-s_{k+1})$")
+    # r"$Gap(k)-(Gap(k+1)-s_{k+1})$"
+    # ax4.plot(xrange(2, maxClusters + 1), gap_results['Sd'].values)
+    fig.text(0.5, 0.01, 'Number of clusters (K)', ha='center', va='center', size=16)
+    ax2.legend(loc='upper right', shadow=False)
+    plt.tight_layout()
+    fig.savefig(path_labels + 'gap_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
+
+
+def plot_silhouette(max_nc, min_nc, SmaxI, silhouette, period, method, path_labels):
+    fig = plt.figure(facecolor='white')
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.plot(range(min_nc, max_nc+1), silhouette, label='silhouette',
+            linestyle='-', color='blue', marker='o', linewidth=2)
+    ax.set_ylabel('Silhouette score')
+    ax.set_xlabel('Number of clusters (K)')
+    ax.axvline(x=SmaxI, color='blue', linestyle="--", linewidth=2)
+    plt.tight_layout()
+    fig.savefig(path_labels + 'silhouette_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
+
+
+def plot_knee(max_nc, min_nc, l, num_clust, period, method, path_labels):
+    last = l[-max_nc+min_nc-1:, 2] #ultimos k cluster na coluna das distancias
+    last_rev = last[::-1]
+    idxs = np.arange(min_nc, max_nc + 1)
+    acceleration = np.diff(last, 2)
+    acceleration_rev = acceleration[::-1]
+    fig = plt.figure(facecolor='white')
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_xlabel('Number of clusters (K)')
+    ax.plot(idxs, last_rev, label='SSE %s' % method, linestyle='-', color='red', marker='o', linewidth=2)
+    ax.plot(idxs[:-2] + 1, acceleration_rev, label=u'Aceleração', linestyle='-', color='c', linewidth=2)
+    # ax.text(num_clust, l[::-1, 2][num_clust - 1], '     Possible\n<- knee point (%i)' % num_clust)
+    ax.axvline(x=num_clust, color='red', linestyle="--", linewidth=2)
+    ax.legend(loc='upper right', shadow=False)
+    plt.tight_layout()
+    fig.savefig(path_labels + 'knee_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
+
+
+def plot_ch(max_nc, min_nc, CHmax, calinski, period, method, path_labels):
+    fig = plt.figure(facecolor='white')
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(range(min_nc, max_nc+1), calinski, label='Calinski Harabaz Index',
+            linestyle='-', color='m', marker='o', linewidth=2)
+    ax.set_ylabel('Calinski Harabaz Index')
+    ax.set_xlabel('Number of clusters (K)')
+    ax.axvline(x=CHmax, color='m', linestyle="--", linewidth=2)
+    plt.tight_layout()
+    fig.savefig(path_labels + 'calinski_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
