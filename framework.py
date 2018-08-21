@@ -125,6 +125,7 @@ def main():
     path_most_used_data = 'results/most_used_data/'
     path_distances = 'results/distances/'
     path_outliers = 'results/outliers/'
+    path_dendrograms = 'results/dendrograms/'
 
     """ Configuration of stages to be executed """
     BQ = False
@@ -284,17 +285,12 @@ def main():
             gc.collect()
         #
         if PD:
-
+            clusters = [6,5,5,4,7,5,4,7,5,5]
             for method in methods:
                 l = pd.read_csv(path_linkage + 'linkage_y_' + period + '_' + method + '.csv.gz', index_col=None, header=None)
-                plot_dendrogram(l)
-
-        # pkgs = matrix['pkgs'].unique()
-        # num_pkgs = pkgs.shape[0]
-        # print 'new all pkgs ' + str(num_pkgs) + ' ...'
-        # barcodes = matrix['barcodes'].unique()
-        # num_barcodes = barcodes.shape[0]
-        # print 'new barcodes ' + str(num_barcodes) + ' ...'
+                plot_dendrogram(l, path_dendrograms, period, method, clusters[d])
+            if d == 9:
+                z = 0
 
 
 if __name__ == '__main__':

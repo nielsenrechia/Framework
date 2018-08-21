@@ -188,23 +188,22 @@ def fancy_dendrogram(*args, **kwargs):
             plt.axhline(y=max_d, c='k')
 
 
-def plot_dendrogram(l):
+def plot_dendrogram(l, path_dendrograms, period, method, clusters):
     plt.clf()
     print 'dendogram...'
     fancy_dendrogram(
         l,
         truncate_mode='lastp',  # show only the last p merged clusters
-        p=60,  # show only the last p merged clusters # sept = 80
+        p=40,  # show only the last p merged clusters # sept = 80
         show_leaf_counts=True,  # otherwise numbers in brackets are counts
         leaf_rotation=90.,  # rotates the x axis labels
-        leaf_font_size=12.,  # font size for the x axis labels
+        leaf_font_size=11.,  # font size for the x axis labels
         show_contracted=True,  # to get a distribution impression in truncated branches
-        annotate_above=10000,   # sept = 10000
-        max_d=1.578e+102    # sept = 158000, jan athen 1.578e+102 or 1.628e+102
+        annotate_above=l.iloc[-13:-12, 2].values,
+        max_d=l.iloc[-clusters:-clusters+1, 2].values + 0.05e+31   # sept = 158000, jan athen 1.578e+102 or 1.628e+102
     )
     plt.tight_layout()
-    plt.savefig('results/dendrogram_teste.png', bbox_inches='tight', pad_inches=0)
-    plt.show()
+    plt.savefig(path_dendrograms + 'dendrogram_' + period + '_' + method + '2.png', bbox_inches='tight', pad_inches=0)
     z = 0
 
 
