@@ -280,3 +280,41 @@ def plot_ch(max_nc, min_nc, CHmax, calinski, period, method, path_labels):
     ax.axvline(x=CHmax, color='m', linestyle="--", linewidth=2)
     plt.tight_layout()
     fig.savefig(path_labels + 'calinski_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
+
+
+def plot_churn_rate(barcodes, dates, num_bar):
+    churners_per = []
+    churners_num = []
+    barcodes = barcodes[(barcodes['is_churn'] == 'yes')]
+    for i in range(0, 20, 1):
+        # print dates[i + 1]
+        # print dates[i+1].month
+        # print barcodes.loc[20662, 'last_day']
+        # print barcodes.loc[20662, 'last_day'].month
+        # barcodes = barcodes[(barcodes['last_day'] < dates[i + 1])]
+        # barcodes = barcodes[(pd.to_datetime(barcodes['last_day']) >= dates[i])]
+        d = barcodes[(pd.to_datetime(barcodes['last_day']) < dates[i + 1]) &
+                     (pd.to_datetime(barcodes['last_day']) >= dates[i])]['is_churn'].count()
+        #     print d
+        print 'churn for date ' + str(dates[i].date()) + ' to ' + str(dates[i + 1].date()) + ' is = ' + str(d) + ' ...'
+        churners_per += [(d / float(num_bar)) * 100.0]
+        churners_num += [d]
+        num_bar -= d
+
+    total = np.sum(churners_num)
+    print total
+
+    fig = plt.figure(facecolor='white', figsize=(9, 4))
+    ax = fig.add_subplot(1, 1, 1)
+    _ = plt.plot(churners_per[:15], linestyle='-', marker='.', color='g', markersize=6)
+    _ = ax.set_xticks(np.arange(0, 15, 1))
+    _ = ax.set_xticklabels(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'])
+    _ = ax.set_xlabel('Week (#)')
+    _ = ax.set_ylabel('Churn Rate (%)')
+    # _ = ax.yaxis.grid(True, which='major')
+    # _ = ax.xaxis.grid(True, which='major')
+    _ = ax.set_ylim([0.08, 0.41])
+    for i, (p, n) in enumerate(zip(churners_per[:15], churners_num[:15])):
+        _ = plt.text(i, 0.95 * p, '%d' % int(n), ha='left', va='top')
+    plt.tight_layout()
+    fig.savefig('results/churn_rate_by_week.png', bbox_inches='tight', pad_inches=0)

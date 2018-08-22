@@ -3,7 +3,7 @@
 import sys
 # from dateutil import parser
 # from utils.bigquery import return_bq_query
-from dataPlot import plot_best_apps, plot_discretization, plot_dendrogram
+from dataPlot import plot_dendrogram, plot_churn_rate
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
 from clustering import barcodes_distance, hac_clustering_barcodes
@@ -12,6 +12,8 @@ from datetime import datetime as dt
 import numpy as np
 import gc
 from matplotlib import pyplot as plt
+from monitoring import get_all_groups_barcodes, get_all_behaviors_barcodes
+from utils.extra_functions import add_barcodes_to_labels
 
 
 def query_data(table, bars, natives, start_date=None, end_date=None):
@@ -113,6 +115,7 @@ def main():
     col_best = [col_best, metrics * len(methods)]
     c_result = pd.DataFrame(index=k, columns=col)
     best_result = pd.DataFrame(index=col_best, columns=best_res)
+    clusters = [6, 5, 5, 4, 7, 5, 4, 7, 5, 5]
 
     """Paths to save/read data"""
     path_labels = 'results/labels/'
@@ -132,7 +135,7 @@ def main():
     AR = False
     DM = False
     CL = False
-    PD = True
+    PL = False
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
@@ -284,13 +287,26 @@ def main():
 
             gc.collect()
         #
-        if PD:
-            clusters = [6,5,5,4,7,5,4,7,5,5]
+        if PL:
             for method in methods:
                 l = pd.read_csv(path_linkage + 'linkage_y_' + period + '_' + method + '.csv.gz', index_col=None, header=None)
                 plot_dendrogram(l, path_dendrograms, period, method, clusters[d])
             if d == 9:
                 z = 0
+
+    barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=None, header=0, parse_dates=['last_day'])
+    # # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
+    # num_bar = barcodes.shape[0]
+    #
+    # plot_churn_rate(barcodes, dates, num_bar)
+    # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
+
+    x = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+    z = 0
+
+
+
+
 
 
 if __name__ == '__main__':
