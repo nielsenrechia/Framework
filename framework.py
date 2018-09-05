@@ -3,7 +3,7 @@
 import sys
 # from dateutil import parser
 # from utils.bigquery import return_bq_query
-from dataPlot import plot_dendrogram, plot_churn_rate
+from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
 from clustering import barcodes_distance, hac_clustering_barcodes
@@ -129,6 +129,8 @@ def main():
     path_distances = 'results/distances/'
     path_outliers = 'results/outliers/'
     path_dendrograms = 'results/dendrograms/'
+    path_churn_rate = 'results/churn_rate/'
+    path_distribution = 'results/cluster_distribution/'
 
     """ Configuration of stages to be executed """
     BQ = False
@@ -295,11 +297,14 @@ def main():
                 z = 0
 
     barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=None, header=0, parse_dates=['last_day'])
+
     # # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
     # num_bar = barcodes.shape[0]
-    #
-    # plot_churn_rate(barcodes, dates, num_bar)
+    # plot_churn_rate(barcodes, dates, num_bar, path_churn_rate)
     # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
+    # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
+
+    
 
     x = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
     z = 0

@@ -282,20 +282,13 @@ def plot_ch(max_nc, min_nc, CHmax, calinski, period, method, path_labels):
     fig.savefig(path_labels + 'calinski_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
 
 
-def plot_churn_rate(barcodes, dates, num_bar):
+def plot_churn_rate(barcodes, dates, num_bar, path_churn_rate):
     churners_per = []
     churners_num = []
     barcodes = barcodes[(barcodes['is_churn'] == 'yes')]
     for i in range(0, 20, 1):
-        # print dates[i + 1]
-        # print dates[i+1].month
-        # print barcodes.loc[20662, 'last_day']
-        # print barcodes.loc[20662, 'last_day'].month
-        # barcodes = barcodes[(barcodes['last_day'] < dates[i + 1])]
-        # barcodes = barcodes[(pd.to_datetime(barcodes['last_day']) >= dates[i])]
         d = barcodes[(pd.to_datetime(barcodes['last_day']) < dates[i + 1]) &
                      (pd.to_datetime(barcodes['last_day']) >= dates[i])]['is_churn'].count()
-        #     print d
         print 'churn for date ' + str(dates[i].date()) + ' to ' + str(dates[i + 1].date()) + ' is = ' + str(d) + ' ...'
         churners_per += [(d / float(num_bar)) * 100.0]
         churners_num += [d]
@@ -317,4 +310,86 @@ def plot_churn_rate(barcodes, dates, num_bar):
     for i, (p, n) in enumerate(zip(churners_per[:15], churners_num[:15])):
         _ = plt.text(i, 0.95 * p, '%d' % int(n), ha='left', va='top')
     plt.tight_layout()
-    fig.savefig('results/churn_rate_by_week.png', bbox_inches='tight', pad_inches=0)
+    fig.savefig(path_churn_rate + '/churn_rate' + '.png', bbox_inches='tight', pad_inches=0)
+
+
+def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution):
+    barcodes_churn = barcodes[barcodes['is_churn'] == 'yes']
+    for d in xrange(len(dates) - 11):
+        start_date = dates[d]
+        end_date = dates[d + 1]
+        period = str(start_date.date()) + '_' + str(end_date.date())
+
+        barcodes_labels = pd.read_csv(path_labels + 'barcodes_labels_' + period + '_' + 'ward' + '_' + str(clusters[d]) + '.csv',
+                                 index_col=None, header=0)
+
+        qty_barcodes_by_clusters = barcodes_labels['labels'].value_counts().sort_index()
+
+        labels = []
+        for c in qty_barcodes_by_clusters.index.values:
+            labels += ['C'+str(c)]
+
+        churn_labels = barcodes_labels[barcodes_labels['barcodes'].isin(barcodes_churn['barcodes'].values)]
+        qty_churners_by_clusters = churn_labels['labels'].value_counts().sort_index()
+
+        week_barcodes_churn = barcodes_churn[(pd.to_datetime(barcodes_churn['last_day']) < dates[d + 1]) &
+                                 (pd.to_datetime(barcodes_churn['last_day']) >= dates[d])]
+        week_barcodes_churn = barcodes_labels[barcodes_labels['barcodes'].isin(week_barcodes_churn['barcodes'].values)]
+        qty_week_barcodes_churn_by_clusters = week_barcodes_churn['labels'].value_counts().sort_index()
+
+        outliers = pd.read_csv(path_outliers + 'outliers_' + period + 'csv.gz', index_col=None, header=None)
+        qty_outliers = outliers.shape[0]
+        outliers_churn = barcodes_churn[barcodes_churn['barcodes'].isin(outliers[0].values)]
+        qty_outliers_churn = outliers_churn['barcodes'].count()
+        outliers_week_churn = outliers_churn[(pd.to_datetime(outliers_churn['last_day']) < dates[d + 1]) &
+                                 (pd.to_datetime(outliers_churn['last_day']) >= dates[d])]
+        qty_outliers_week_churn = outliers_week_churn['barcodes'].count()
+
+        res_outliers = pd.DataFrame(np.array([qty_outliers, qty_outliers_churn, qty_outliers_week_churn]).reshape(1,-1), columns=['total', 'churn', 'week_churns'])
+        res = pd.concat([qty_barcodes_by_clusters, qty_churners_by_clusters, qty_week_barcodes_churn_by_clusters], axis=1, keys=['total', 'churn', 'week_churns'])
+        res = pd.concat([res, res_outliers], ignore_index=True)
+        res.index += 1
+        res.fillna(0, inplace=True)
+        labels.append('Outliers')
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+        fig.subplots_adjust(left=0.7, wspace=0.3)
+
+        size = 0.2
+
+        def make_autopct(values):
+            def my_autopct(pct):
+                total = sum(values)
+                val = int((pct * total / 100.0) + 0.5)
+                return '{v:d} - {p:.2f}%'.format(p=pct, v=val)
+
+            return my_autopct
+
+        cmap = plt.get_cmap("tab20b").colors
+        cmap2 = plt.get_cmap("tab20c").colors
+        cmapfinal = np.vstack((cmap, cmap2))
+        outer = np.arange(len(qty_barcodes_by_clusters)+1) * 4
+        outer_colors = cmapfinal[outer]
+
+        v1 = res['total'].values.flatten()
+        ax1.pie(v1, labels=labels, autopct=make_autopct(v1), radius=1, colors=outer_colors,
+                wedgeprops=dict(width=size, edgecolor='w'))
+
+        ax1.set(aspect="equal", title='Barcodes')
+
+        v2 = res['churn'].values.flatten()
+        ax2.pie(v2, radius=1, labels=labels, autopct=make_autopct(v2), colors=outer_colors,
+                wedgeprops=dict(width=size, edgecolor='w'))
+
+        ax2.set(aspect="equal", title='Churns')
+        # ax2.legend(wedges[0], ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'], loc="center")
+
+        v3 = res['week_churns'].values.flatten()
+        ax3.pie(v3, labels=labels, autopct=make_autopct(v3), radius=1, colors=outer_colors,
+                wedgeprops=dict(width=size, edgecolor='w'))
+
+        ax3.set(aspect="equal", title='Week Churns')
+        # ax3.legend(wedges[0], ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'], loc="center")
+
+        plt.tight_layout()
+        fig.savefig(path_distribution + 'cluster_distribution' + period + '.png', bbox_inches='tight', pad_inches=0)
+        z = 0

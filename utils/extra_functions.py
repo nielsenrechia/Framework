@@ -2,7 +2,6 @@ import pandas as pd
 
 
 def add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
-
     for d in xrange(len(dates) - 11):
         start_date = dates[d]
         end_date = dates[d + 1]
