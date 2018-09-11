@@ -15,33 +15,38 @@ from numba import jit
 
 
 def get_all_groups_barcodes(path_labels, path_outliers, dates, method, clusters, barcodes):
-    header = []
-    weeks = []
+    header = barcodes.columns.values
     for d in xrange(len(dates) - 11):
         start_date = dates[d]
         end_date = dates[d + 1]
         period = str(start_date.date()) + '_' + str(end_date.date())
+        print period
 
-        header += [period]
-        weeks += [1]
+        header = np.append(header, period)
+
+        labels_week = pd.read_csv(
+            path_labels + 'barcodes_labels_' + period + '_' + method + '_' + str(clusters[d]) + '.csv', index_col=1,
+            header=0)
+        outliers = pd.read_csv(path_outliers + 'outliers_' + period + 'csv.gz', index_col=None, header=None)
 
         if d == 0:
-            all_groups = pd.read_csv(path_labels + 'labels_' + period + '_' + method + '_' + str(clusters[d]) + '.csv', index_col=0, header=None)
-            outliers = pd.read_csv(path_outliers + 'outliers_' + period + 'csv.gz', index_col=None, header=None)
-            not_outliers = barcodes[~barcodes['barcodes'].isin(outliers[0])]
+            first_week = period
+            all_labels = pd.concat([barcodes, labels_week], axis=1)
             z = 0
         else:
-            new_groups = pd.read_csv(path_labels + 'labels_' + period + '_' + method + '_' + str(clusters[d]) + '.csv', index_col=0, header=None)
-            weeks += [d + 2]
-            all_groups = pd.concat([all_groups, new_groups], axis=1)
-    all_groups.columns = header
+            all_labels = pd.concat([all_labels, labels_week], axis=1)
+            z = 0
 
-    all_groups = all_groups.dropna(subset=['11/dec - 17/dec'])
-    all_groups['weeks'] = all_groups.isnull().sum(axis=1)
+        all_labels.loc[outliers[0], 'labels'] = 0.1
+        all_labels.columns = header
+
+    all_labels_without_out_first_week = all_labels.dropna(subset=[first_week])
+    all_labels['weeks_out'] = all_labels.isnull().sum(axis=1)
     # all_groups = all_groups[all_groups['weeks'] < 3]
 
-    all_groups.to_csv(path + 'all_groups_barcodes_new_dist.csv', header=True, index_label='barcodes', index=True,
-                      quoting=csv.QUOTE_NONE, escapechar='\\')
+    all_labels.to_csv('results/all_labels_barcodes.csv', header=True, index_label='barcodes', index=True)
+    all_labels_without_out_first_week.to_csv('results/all_labels_without_barcodes_out_first_week.csv', header=True,
+                                             index_label='barcodes', index=True)
 
 
 def get_all_behaviors_barcodes(path, all_groups):

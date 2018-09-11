@@ -129,7 +129,6 @@ def main():
     path_distances = 'results/distances/'
     path_outliers = 'results/outliers/'
     path_dendrograms = 'results/dendrograms/'
-    path_churn_rate = 'results/churn_rate/'
     path_distribution = 'results/cluster_distribution/'
 
     """ Configuration of stages to be executed """
@@ -296,22 +295,17 @@ def main():
             if d == 9:
                 z = 0
 
-    barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=None, header=0, parse_dates=['last_day'])
+    barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
 
-    # # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
+    # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
     # num_bar = barcodes.shape[0]
-    # plot_churn_rate(barcodes, dates, num_bar, path_churn_rate)
+    # plot_churn_rate(barcodes, dates, num_bar)
+
     # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
     # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
 
-    
-
     x = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
     z = 0
-
-
-
-
 
 
 if __name__ == '__main__':

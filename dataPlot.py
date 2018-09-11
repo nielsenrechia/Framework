@@ -282,7 +282,7 @@ def plot_ch(max_nc, min_nc, CHmax, calinski, period, method, path_labels):
     fig.savefig(path_labels + 'calinski_score_' + period + '_' + method + '.png', bbox_inches='tight', pad_inches=0)
 
 
-def plot_churn_rate(barcodes, dates, num_bar, path_churn_rate):
+def plot_churn_rate(barcodes, dates, num_bar):
     churners_per = []
     churners_num = []
     barcodes = barcodes[(barcodes['is_churn'] == 'yes')]
@@ -310,7 +310,7 @@ def plot_churn_rate(barcodes, dates, num_bar, path_churn_rate):
     for i, (p, n) in enumerate(zip(churners_per[:15], churners_num[:15])):
         _ = plt.text(i, 0.95 * p, '%d' % int(n), ha='left', va='top')
     plt.tight_layout()
-    fig.savefig(path_churn_rate + '/churn_rate' + '.png', bbox_inches='tight', pad_inches=0)
+    fig.savefig('results/churn_rate.png', bbox_inches='tight', pad_inches=0)
 
 
 def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution):
