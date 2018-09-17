@@ -304,7 +304,8 @@ def main():
     # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
     # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
 
-    x = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+    all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+    z = get_all_behaviors_barcodes(all_labels)
     z = 0
 
 

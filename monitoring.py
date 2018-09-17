@@ -41,20 +41,20 @@ def get_all_groups_barcodes(path_labels, path_outliers, dates, method, clusters,
         all_labels.columns = header
 
     all_labels_without_out_first_week = all_labels.dropna(subset=[first_week])
-    all_labels['weeks_out'] = all_labels.isnull().sum(axis=1)
-    # all_groups = all_groups[all_groups['weeks'] < 3]
-
-    all_labels.to_csv('results/all_labels_barcodes.csv', header=True, index_label='barcodes', index=True)
+    all_labels_without_out_first_week['weeks_out'] = all_labels_without_out_first_week.isnull().sum(axis=1)
     all_labels_without_out_first_week.to_csv('results/all_labels_without_barcodes_out_first_week.csv', header=True,
                                              index_label='barcodes', index=True)
+    all_labels['weeks_out'] = all_labels.isnull().sum(axis=1)
+    # all_groups = all_groups[all_groups['weeks'] < 3]
+    all_labels.to_csv('results/all_labels_barcodes.csv', header=True, index_label='barcodes', index=True)
+
+    return all_labels_without_out_first_week
 
 
-def get_all_behaviors_barcodes(path, all_groups):
-    all_groups = pd.read_csv(path + all_groups, nrows=None, header=0, index_col=0)
-    # header = ['04/sep - 10/sep', '11/sep - 17/sep', '18/sep - 24/sep', '25/sep - 01/oct', '02/oct - 08/oct',
-    #           '09/oct - 15/oct', '16/oct - 22/oct', '23/oct - 29/oct', '20/oct - 05/nov', '06/nov - 11/nov']
-    header = ['11/dec - 17/dec', '18/dec - 24/dec', '25/dec - 31/dec', '01/jan - 07/jan', '08/jan - 14/jan',
-              '15/jan - 21/jan', '22/jan - 28/jan', '29/jan - 04/feb', '05/feb - 11/feb', '12/feb - 18/feb']
+def get_all_behaviors_barcodes(all_groups):
+    header = all_groups.columns[3:-1]
+    # header = ['11/dec - 17/dec', '18/dec - 24/dec', '25/dec - 31/dec', '01/jan - 07/jan', '08/jan - 14/jan',
+    #           '15/jan - 21/jan', '22/jan - 28/jan', '29/jan - 04/feb', '05/feb - 11/feb', '12/feb - 18/feb']
     barcodes = all_groups.index.values
 
     behaviors = pd.DataFrame(index=barcodes, columns=header[1:])
@@ -62,6 +62,7 @@ def get_all_behaviors_barcodes(path, all_groups):
     for i, h in enumerate(header[:9]):
         print h
         for b in barcodes:
+            # if b == 'ie31bc19f132f945c827f1f2f51bfcd156c1c00aed':
             actual_label = all_groups[h].loc[b]
             next_label = all_groups[header[i + 1]].loc[b]
             if next_label == 0.1:
@@ -90,6 +91,6 @@ def get_all_behaviors_barcodes(path, all_groups):
                     else:
                         behaviors.loc[b, header[i + 1]] = 'C'
 
-    behaviors.to_csv(path+'all_behaviors_barcodes_new_dist.csv', header=True,
-                     index_label='barcodes', index=True, quoting=csv.QUOTE_NONE, escapechar='\\')
+    behaviors.to_csv('results/all_behaviors_barcodes_without_first_week.csv', header=True, index_label='barcodes',
+                     index=True)
     z = 0
