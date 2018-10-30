@@ -319,7 +319,7 @@ def main():
 
     results = pd.DataFrame(
         index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
-        columns=pd.MultiIndex.from_product([dates[:10].date, variations], names=['dates', 'variations']))
+        columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
 
     for d in xrange(len(dates[:9])):
         start_date = dates[d]
