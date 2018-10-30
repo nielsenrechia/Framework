@@ -296,7 +296,7 @@ def main():
             if d == 9:
                 z = 0
 
-    barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
+    # barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
 
     # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
     # num_bar = barcodes.shape[0]
@@ -313,6 +313,14 @@ def main():
     # all_behaviors_together = put_same_behaviors_together(all_behaviors)
     # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
 
+    trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    trasholdSplit = [0.2, 0.25, 0.3, 0.35, 0.4]
+    variations = ['absorptions', 'survivals', 'deads', 'splits']
+
+    results = pd.DataFrame(
+        index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
+        columns=pd.MultiIndex.from_product([dates[:10].date, variations], names=['dates', 'variations']))
+
     for d in xrange(len(dates[:9])):
         start_date = dates[d]
         end_date = dates[d + 1]
@@ -324,12 +332,6 @@ def main():
         objetcsX = all_labels[periodX]
         objectsY = all_labels[periodY]
 
-        trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-        trasholdSplit = [0.2, 0.25, 0.3, 0.35, 0.4]
-        variations = ['absorptions', 'survivals', 'deads', 'splits']
-
-        results = pd.DataFrame(index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
-                               columns=pd.MultiIndex.from_product([dates[:10].date, variations],names=['dates', 'variations']))
         for t in trashold:
             for ts in trasholdSplit:
                 absorptionList, survivallist, deadList, splitList = monic_external_transistions(t, ts, objetcsX, objectsY)
@@ -347,6 +349,8 @@ def main():
                         sp += [l[0]]
 
                 results.loc[t, ts][dates[d].date()] = [float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp)))]
+                z = 0
+        z = 0
     results.to_csv('results/variations_by_trasholds.csv', header=True, index=True)
 
 
