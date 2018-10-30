@@ -313,13 +313,12 @@ def main():
     # all_behaviors_together = put_same_behaviors_together(all_behaviors)
     # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
 
-    for d in xrange(len(dates) - 1):
-        print d
-        t1 = dt.now()
+    for d in xrange(len(dates[:9])):
         start_date = dates[d]
         end_date = dates[d + 1]
         end_date_2 = dates[d + 2]
         periodX = str(start_date.date()) + '_' + str(end_date.date())
+        print periodX
         periodY = str(end_date.date()) + '_' + str(end_date_2.date())
         all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
         objetcsX = all_labels[periodX]
@@ -348,7 +347,7 @@ def main():
                         sp += [l[0]]
 
                 results.loc[t, ts][dates[d].date()] = [float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp)))]
-    results.to_csv('results/variations_by_trasholds.csv', index=True, columns=True)
+    results.to_csv('results/variations_by_trasholds.csv', header=True, index=True)
 
 
         # plot_results(absorptionList, survivallist, deadList, splitList)
