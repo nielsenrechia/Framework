@@ -393,3 +393,7 @@ def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barco
         plt.tight_layout()
         fig.savefig(path_distribution + 'cluster_distribution' + period + '.png', bbox_inches='tight', pad_inches=0)
         z = 0
+
+def plot_results(absorptionList, survivallist, deadList, splitList):
+
+    z = 0

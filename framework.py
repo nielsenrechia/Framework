@@ -3,7 +3,7 @@
 import sys
 # from dateutil import parser
 # from utils.bigquery import return_bq_query
-from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution
+from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution, plot_results
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
 from clustering import barcodes_distance, hac_clustering_barcodes
@@ -12,7 +12,8 @@ from datetime import datetime as dt
 import numpy as np
 import gc
 from matplotlib import pyplot as plt
-from monitoring import get_all_groups_barcodes, get_all_behaviors_barcodes
+from monitoring import get_all_groups_barcodes, get_all_behaviors_barcodes, put_same_behaviors_together, \
+    get_similar_behaviors_for_less_weeks_behaviors, churn_prediction, monic_external_transistions
 from utils.extra_functions import add_barcodes_to_labels
 
 
@@ -71,6 +72,7 @@ def main():
     startDate = '2017-06-05'
     endDate = '2017-10-23'
     frequency = '7D'
+    dates = pd.date_range(startDate, endDate, freq=frequency)
     table = '[motorola.com:sandbox:nielsen.appusage_athene_170605_to_171022_finished]'
     model = 'athene'
     country = 'BR'
@@ -78,7 +80,6 @@ def main():
     natives = "('com.android.systemui', 'com.google.android.packageinstaller', 'com.android.packageinstaller', " \
               "'android', 'com.motorola.setup', 'com.motorola.storageoptimizer', 'com.motorola.motocit', " \
               "'com.motorola.android.provisioning', 'com.google.android.setupwizard', 'com.android.stk')"
-    dates = pd.date_range(startDate, endDate, freq=frequency)
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c')"
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c', 'ied733fe5ec38ee9f11931fe38d98be89865b33751')"
     # bars = "('iea39653b70d1e391d2c8af992fc873f32104ce96c', 'ied733fe5ec38ee9f11931fe38d98be89865b33751'," \
@@ -304,9 +305,59 @@ def main():
     # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
     # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
 
-    all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
-    z = get_all_behaviors_barcodes(all_labels)
-    z = 0
+    # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+    # all_behaviors = get_all_behaviors_barcodes(all_labels)
+
+    # all_behaviors = pd.read_csv('results/all_behaviors_barcodes_without_first_week.csv', index_col=0, header=0)
+    #
+    # all_behaviors_together = put_same_behaviors_together(all_behaviors)
+    # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
+
+    for d in xrange(len(dates) - 1):
+        print d
+        t1 = dt.now()
+        start_date = dates[d]
+        end_date = dates[d + 1]
+        end_date_2 = dates[d + 2]
+        periodX = str(start_date.date()) + '_' + str(end_date.date())
+        periodY = str(end_date.date()) + '_' + str(end_date_2.date())
+        all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
+        objetcsX = all_labels[periodX]
+        objectsY = all_labels[periodY]
+
+        trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+        trasholdSplit = [0.2, 0.25, 0.3, 0.35, 0.4]
+        variations = ['absorptions', 'survivals', 'deads', 'splits']
+
+        results = pd.DataFrame(index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
+                               columns=pd.MultiIndex.from_product([dates[:10].date, variations],names=['dates', 'variations']))
+        for t in trashold:
+            for ts in trasholdSplit:
+                absorptionList, survivallist, deadList, splitList = monic_external_transistions(t, ts, objetcsX, objectsY)
+                a = []
+                su = []
+                sp = []
+                if absorptionList:
+                    for l in absorptionList:
+                        a += [l[0]]
+                if survivallist:
+                    for l in survivallist:
+                        su += [l[0]]
+                if splitList:
+                    for l in splitList:
+                        sp += [l[0]]
+
+                results.loc[t, ts][dates[d].date()] = [float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp)))]
+    results.to_csv('results/variations_by_trasholds.csv', index=True, columns=True)
+
+
+        # plot_results(absorptionList, survivallist, deadList, splitList)
+
+    # all_behaviors_together = pd.read_csv('results/final_behaviors_together_qtd.csv', index_col=0, header=0)
+    #
+    # churn_prediction(all_behaviors, all_behaviors_together)
+    #
+    # z = 0
 
 
 if __name__ == '__main__':
