@@ -13,3 +13,4 @@ results/barcodes_summary_teste.xlsx
 *.iml
 
 results/
+.idea/Framework.iml
