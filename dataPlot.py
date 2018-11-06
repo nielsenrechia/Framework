@@ -394,6 +394,32 @@ def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barco
         fig.savefig(path_distribution + 'cluster_distribution' + period + '.png', bbox_inches='tight', pad_inches=0)
         z = 0
 
-def plot_results(absorptionList, survivallist, deadList, splitList):
 
-    z = 0
+def plot_results(results, trashold):
+    types = ['births', 'splits', 'survivals', 'absorptions', 'deaths']
+    markers = ['H', '^', 'v', '<', 'x', '>', '*']
+
+    for ty in types:
+        for t in trashold:
+            df = results.loc[(t, slice(None)), (slice(None), ty)].T
+            df.columns = df.columns.droplevel()
+            df.index = df.index.droplevel(1)
+            new_index = pd.to_datetime(df.index)
+            new_index = new_index.date
+
+            fig = plt.figure(facecolor='white', figsize=(9, 4))
+            ax = fig.add_subplot(1, 1, 1)
+            plt.xticks(rotation=15)
+            ax.plot(df)
+            ax.yaxis.grid(True, which='major')
+            ax.set_xticklabels(new_index)
+
+            for i, line in enumerate(ax.get_lines()):
+                line.set_marker(markers[i])
+
+            ax.legend(ax.get_lines(), df.columns, bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand",
+                      borderaxespad=0, ncol=7)
+
+            plt.tight_layout()
+            # plt.show()
+            plt.savefig('results/monitoring_thresholds/new_' + ty + '_' + str(t) + '.png', pad_inches=0)

@@ -108,7 +108,7 @@ def makelist(absorptionsSurvivals, Y):
     return new_list
 
 
-@jit
+# @jit
 def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
     clustersX = pd.Series(objectsX.unique())
     clustersX = clustersX[clustersX != 0.1].dropna().values
@@ -120,6 +120,7 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
     survivallist = []
     deadList = []
     splitList = []
+    birthList = clustersY
     for X in clustersX:
         splitCandidates = []
         splitUnion = []
@@ -137,26 +138,29 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
                 splitUnion = np.union1d(splitUnion, objectsY[objectsY == Y].index)
         if not survivalCandidate and not splitCandidates:
             deadList += [[X]]
+        elif survivalCandidate:
+            absorptionsSurvivals += [[X, survivalCandidate]]
         elif splitCandidates:
             if overlap(objectsX[objectsX == X].index, splitUnion, objectsY[objectsY != 0.1].dropna().index) >= trashold:
                 for Y in splitCandidates:
                     splitList += [[X, Y]]
+                    birthList = np.delete(birthList, np.where(birthList == Y))
             elif survivalCandidate:
                 absorptionsSurvivals += [[X, survivalCandidate]]
             else:
                 deadList += [[X]]
-        elif survivalCandidate:
-            absorptionsSurvivals += [[X, survivalCandidate]]
     for Y in clustersY:
         absorptionCandidates = makelist(absorptionsSurvivals, Y)
         if len(absorptionCandidates) > 1:
             for X in absorptionCandidates:
                 absorptionList += [[X, Y]]
                 absorptionsSurvivals.remove([X, Y])
+                birthList = np.delete(birthList, np.where(birthList == Y))
         elif len(absorptionCandidates) == 1:
             survivallist += [[absorptionCandidates[0], Y]]
             absorptionsSurvivals.remove([absorptionCandidates[0], Y])
-    return absorptionList, survivallist, deadList, splitList
+            birthList = np.delete(birthList, np.where(birthList == Y))
+    return absorptionList, survivallist, deadList, splitList, birthList, len(clustersX), len(clustersY)
 
 def put_same_behaviors_together(barcodes_behaviors):
     header = barcodes_behaviors.columns.values[:-1]

@@ -138,6 +138,7 @@ def main():
     DM = False
     CL = False
     PL = False
+    MO = False
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
@@ -313,28 +314,33 @@ def main():
     # all_behaviors_together = put_same_behaviors_together(all_behaviors)
     # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
 
-    trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-    trasholdSplit = [0.2, 0.25, 0.3, 0.35, 0.4]
-    variations = ['absorptions', 'survivals', 'deads', 'splits']
+    # trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    # trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    trashold = [0.4, 0.45, 0.5]
+    trasholdSplit = [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21]
+
+    variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
 
     results = pd.DataFrame(
         index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
         columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
 
+    birthsX = [0] * len(trashold) * len(trasholdSplit)
     for d in xrange(len(dates[:9])):
         start_date = dates[d]
+        print start_date
         end_date = dates[d + 1]
         end_date_2 = dates[d + 2]
         periodX = str(start_date.date()) + '_' + str(end_date.date())
-        print periodX
         periodY = str(end_date.date()) + '_' + str(end_date_2.date())
         all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
         objetcsX = all_labels[periodX]
         objectsY = all_labels[periodY]
-
+        birthsY = []
         for t in trashold:
             for ts in trasholdSplit:
-                absorptionList, survivallist, deadList, splitList = monic_external_transistions(t, ts, objetcsX, objectsY)
+                absorptionList, survivallist, deadList, splitList, birthList, n_clustersX, n_clustersY \
+                    = monic_external_transistions(t, ts, objetcsX, objectsY)
                 a = []
                 su = []
                 sp = []
@@ -348,13 +354,16 @@ def main():
                     for l in splitList:
                         sp += [l[0]]
 
-                results.loc[t, ts][dates[d].date()] = [float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp)))]
+                birthsY += [len(birthList)]
+                results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp))), 0]
                 z = 0
+        results[(dates[d].date(), 'births')] = birthsX
+        birthsX = birthsY
         z = 0
-    results.to_csv('results/variations_by_trasholds.csv', header=True, index=True)
+    results.to_csv('results/new_new_variations_by_trasholds.csv', header=True, index=True)
 
-
-        # plot_results(absorptionList, survivallist, deadList, splitList)
+    # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
+    plot_results(results, trashold)
 
     # all_behaviors_together = pd.read_csv('results/final_behaviors_together_qtd.csv', index_col=0, header=0)
     #
