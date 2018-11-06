@@ -297,79 +297,81 @@ def main():
             if d == 9:
                 z = 0
 
-    # barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
 
-    # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
-    # num_bar = barcodes.shape[0]
-    # plot_churn_rate(barcodes, dates, num_bar)
+    if MO:
+        # barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
 
-    # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
-    # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
+        # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
+        # num_bar = barcodes.shape[0]
+        # plot_churn_rate(barcodes, dates, num_bar)
 
-    # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
-    # all_behaviors = get_all_behaviors_barcodes(all_labels)
+        # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
+        # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
 
-    # all_behaviors = pd.read_csv('results/all_behaviors_barcodes_without_first_week.csv', index_col=0, header=0)
-    #
-    # all_behaviors_together = put_same_behaviors_together(all_behaviors)
-    # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
+        # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+        # all_behaviors = get_all_behaviors_barcodes(all_labels)
 
-    # trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-    # trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-    trashold = [0.4, 0.45, 0.5]
-    trasholdSplit = [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21]
+        # all_behaviors = pd.read_csv('results/all_behaviors_barcodes_without_first_week.csv', index_col=0, header=0)
+        #
+        # all_behaviors_together = put_same_behaviors_together(all_behaviors)
+        # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
 
-    variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
+        # trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+        # trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+        trashold = [0.4, 0.45, 0.5]
+        trasholdSplit = [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21]
 
-    results = pd.DataFrame(
-        index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
-        columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
+        variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
 
-    birthsX = [0] * len(trashold) * len(trasholdSplit)
-    for d in xrange(len(dates[:9])):
-        start_date = dates[d]
-        print start_date
-        end_date = dates[d + 1]
-        end_date_2 = dates[d + 2]
-        periodX = str(start_date.date()) + '_' + str(end_date.date())
-        periodY = str(end_date.date()) + '_' + str(end_date_2.date())
-        all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
-        objetcsX = all_labels[periodX]
-        objectsY = all_labels[periodY]
-        birthsY = []
-        for t in trashold:
-            for ts in trasholdSplit:
-                absorptionList, survivallist, deadList, splitList, birthList, n_clustersX, n_clustersY \
-                    = monic_external_transistions(t, ts, objetcsX, objectsY)
-                a = []
-                su = []
-                sp = []
-                if absorptionList:
-                    for l in absorptionList:
-                        a += [l[0]]
-                if survivallist:
-                    for l in survivallist:
-                        su += [l[0]]
-                if splitList:
-                    for l in splitList:
-                        sp += [l[0]]
+        results = pd.DataFrame(
+            index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
+            columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
 
-                birthsY += [len(birthList)]
-                results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp))), 0]
-                z = 0
-        results[(dates[d].date(), 'births')] = birthsX
-        birthsX = birthsY
-        z = 0
-    results.to_csv('results/new_new_variations_by_trasholds.csv', header=True, index=True)
+        birthsX = [0] * len(trashold) * len(trasholdSplit)
+        for d in xrange(len(dates[:9])):
+            start_date = dates[d]
+            print start_date
+            end_date = dates[d + 1]
+            end_date_2 = dates[d + 2]
+            periodX = str(start_date.date()) + '_' + str(end_date.date())
+            periodY = str(end_date.date()) + '_' + str(end_date_2.date())
+            all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
+            objetcsX = all_labels[periodX]
+            objectsY = all_labels[periodY]
+            birthsY = []
+            for t in trashold:
+                for ts in trasholdSplit:
+                    absorptionList, survivallist, deadList, splitList, birthList, n_clustersX, n_clustersY \
+                        = monic_external_transistions(t, ts, objetcsX, objectsY)
+                    a = []
+                    su = []
+                    sp = []
+                    if absorptionList:
+                        for l in absorptionList:
+                            a += [l[0]]
+                    if survivallist:
+                        for l in survivallist:
+                            su += [l[0]]
+                    if splitList:
+                        for l in splitList:
+                            sp += [l[0]]
 
-    # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
-    plot_results(results, trashold)
+                    birthsY += [len(birthList)]
+                    results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp))), 0]
+                    z = 0
+            results[(dates[d].date(), 'births')] = birthsX
+            birthsX = birthsY
+            z = 0
+        results.to_csv('results/new_new_variations_by_trasholds.csv', header=True, index=True)
 
-    # all_behaviors_together = pd.read_csv('results/final_behaviors_together_qtd.csv', index_col=0, header=0)
-    #
-    # churn_prediction(all_behaviors, all_behaviors_together)
-    #
-    # z = 0
+        # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
+        plot_results(results, trashold)
+
+        # all_behaviors_together = pd.read_csv('results/final_behaviors_together_qtd.csv', index_col=0, header=0)
+        #
+        # churn_prediction(all_behaviors, all_behaviors_together)
+        #
+        # z = 0
 
 
 if __name__ == '__main__':
