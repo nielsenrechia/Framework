@@ -96,6 +96,58 @@ def get_all_behaviors_barcodes(all_groups):
     behaviors.to_csv('results/all_behaviors_barcodes_without_first_week.csv', header=True, index_label='barcodes',
                      index=True)
 
+
+def get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList, all_labels, clustersX,
+                                          behaviors, periodX, periodY):
+    changed_barcodes = []
+    loyal_barcodes = []
+    missing_barcodes = []
+    outlier_barcodes = []
+    for c in clustersX:
+
+        loyal_clusters = []
+        if c in [ab[0] for ab in absorptionList]:
+            for ab in absorptionList:
+                if c == ab[0]:
+                    loyal_clusters += [ab[1]]
+            changed_barcodes += all_labels[(~all_labels[periodY].isin(loyal_clusters)) & (all_labels[periodX] == c)].index.values.tolist()
+            loyal_barcodes += all_labels[(all_labels[periodY].isin(loyal_clusters)) & (all_labels[periodX] == c)].index.values.tolist()
+
+        elif c in [su[0] for su in survivallist]:
+            for su in survivallist:
+                if c == su[0]:
+                    changed_barcodes += all_labels[(all_labels[periodY] != su[1]) & (all_labels[periodX] == c)].index.values.tolist()
+                    loyal_barcodes += all_labels[(all_labels[periodY] == su[1]) & (all_labels[periodX] == c)].index.values.tolist()
+
+        elif c in deathList:
+            for de in deathList:
+                if c == de[0]:
+                    changed_barcodes += all_labels[all_labels[periodX] == c].index.values.tolist()
+
+        elif c in [sp[0] for sp in splitList]:
+            for sp in splitList:
+                if c == sp[0]:
+                    loyal_clusters += [sp[1]]
+            changed_barcodes += all_labels[(~all_labels[periodY].isin(loyal_clusters)) & (all_labels[periodX] == c)].index.values.tolist()
+            loyal_barcodes += all_labels[(all_labels[periodY].isin(loyal_clusters)) & (all_labels[periodX] == c)].index.values.tolist()
+
+    changed_barcodes += all_labels[(~all_labels.index.isin(changed_barcodes)) & (~all_labels.index.isin(loyal_barcodes))
+                                   & (~all_labels[periodY].isnull()) & (all_labels[periodY] != 0.1)].index.values.tolist()
+    missing_barcodes += all_labels[all_labels[periodY].isnull()].index.values.tolist()
+    outlier_barcodes += all_labels[all_labels[periodY] == 0.1].index.values.tolist()
+
+    if changed_barcodes:
+        behaviors.loc[changed_barcodes, periodY] = 'C'
+    if loyal_barcodes:
+        behaviors.loc[loyal_barcodes, periodY] = 'loyal'
+    if missing_barcodes:
+        behaviors.loc[missing_barcodes, periodY] = 'miss'
+    if outlier_barcodes:
+        behaviors.loc[outlier_barcodes, periodY] = 'outlier'
+
+    return behaviors
+
+
 def overlap(clusterX, clusterY, objectsY):
     return float(len(np.intersect1d(clusterX, clusterY))) / float(len(np.intersect1d(clusterX, objectsY)))
 
@@ -118,7 +170,7 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
     absorptionList = []
     absorptionsSurvivals = []
     survivallist = []
-    deadList = []
+    deathList = []
     splitList = []
     birthList = clustersY
     for X in clustersX:
@@ -137,7 +189,7 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
                 splitCandidates += [Y]
                 splitUnion = np.union1d(splitUnion, objectsY[objectsY == Y].index)
         if not survivalCandidate and not splitCandidates:
-            deadList += [[X]]
+            deathList += [[X]]
         elif survivalCandidate:
             absorptionsSurvivals += [[X, survivalCandidate]]
         elif splitCandidates:
@@ -148,7 +200,7 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
             elif survivalCandidate:
                 absorptionsSurvivals += [[X, survivalCandidate]]
             else:
-                deadList += [[X]]
+                deathList += [[X]]
     for Y in clustersY:
         absorptionCandidates = makelist(absorptionsSurvivals, Y)
         if len(absorptionCandidates) > 1:
@@ -160,7 +212,8 @@ def monic_external_transistions(trashold, trasholdSplit, objectsX, objectsY):
             survivallist += [[absorptionCandidates[0], Y]]
             absorptionsSurvivals.remove([absorptionCandidates[0], Y])
             birthList = np.delete(birthList, np.where(birthList == Y))
-    return absorptionList, survivallist, deadList, splitList, birthList, len(clustersX), len(clustersY)
+    return absorptionList, survivallist, deathList, splitList, birthList, len(clustersX), len(clustersY), clustersX, clustersY
+
 
 def put_same_behaviors_together(barcodes_behaviors):
     header = barcodes_behaviors.columns.values[:-1]
@@ -220,21 +273,17 @@ def put_same_behaviors_together(barcodes_behaviors):
                 loyals.append(0)
             weeks.append(w+1)
 
-    print len(behaviors)
-    print len(header)
-
     behaviors = pd.DataFrame(data=behaviors, columns=header)
     counters = pd.DataFrame({'total_barcodes': count, 'loyals': loyals, 'cs': cds, 'outliers': outliers,
                              'missings': missings, 'weeks': weeks, 'churns': churns, 'not_churns': not_churns})
     final_matrix = pd.concat([behaviors, counters], axis=1).sort_values('total_barcodes', ascending=False)
 
-    final_matrix.to_csv('results/cutomers_behaviors_together_without_first_week.csv', header=True, index=True)
     return final_matrix
 
 
 def get_similar_behaviors_for_less_weeks_behaviors(behaviors_together):
 
-    less_weeks = behaviors_together[behaviors_together['weeks'] < 10]
+    less_weeks = behaviors_together[(behaviors_together['weeks'] < 9) & (behaviors_together['weeks'] > 7)]
 
     for i, b in less_weeks.iterrows():
         null = b[b == 'miss'].index.values
@@ -258,7 +307,24 @@ def get_similar_behaviors_for_less_weeks_behaviors(behaviors_together):
             behaviors_together.loc[i, 'likely'] = col_conduct[max_percent]
 
     z = 0
-    behaviors_together.to_csv('results/final_behaviors_together_qtd.csv', header=True, index=True)
+
+    #sum less_week with likelies
+    droped = []
+    for i, b in less_weeks.iterrows():
+        z = 0
+        if i not in droped:
+            likely = behaviors_together.loc[i]['likely']
+            if ~np.isnan(likely):
+                to_sum = behaviors_together[(behaviors_together['likely'] == likely) | (behaviors_together.index == likely)]
+                indices = to_sum.index
+                indices = indices.drop(likely)
+                behaviors_together.loc[likely, ['churns', 'not_churns', 'total_barcodes']] = to_sum.loc[slice(None), ['churns', 'not_churns', 'total_barcodes']].sum(axis=0).values
+                behaviors_together = behaviors_together[behaviors_together['likely'] != likely]
+                less_weeks = less_weeks.drop(indices)
+                droped += list(indices)
+                z = 0
+
+    return behaviors_together
 
 
 def churn_prediction(barcodes_behaviors, final_behaviors):
@@ -299,8 +365,8 @@ def churn_prediction(barcodes_behaviors, final_behaviors):
     selected_behaviors = selected_behaviors.fillna(0)
 
     #
-    selected_behaviors.to_csv('results/changes_in_behaviors_to_predict_qtd.csv', header=True, index=True,
-                              index_label='comportamentos')
+    # selected_behaviors.to_csv('results/changes_in_behaviors_to_predict_qtd.csv', header=True, index=True,
+    #                           index_label='comportamentos')
 
     df1 = selected_behaviors[(selected_behaviors['total_barcodes'] < 50) & (selected_behaviors['missings'] > 0) & (selected_behaviors['outliers'] > 0)]
     df2 = selected_behaviors[(selected_behaviors['total_barcodes'] < 50) & (selected_behaviors['cs'] >= 2) & (selected_behaviors['cs'] <= 5)]

@@ -13,7 +13,8 @@ import numpy as np
 import gc
 from matplotlib import pyplot as plt
 from monitoring import get_all_groups_barcodes, get_all_behaviors_barcodes, put_same_behaviors_together, \
-    get_similar_behaviors_for_less_weeks_behaviors, churn_prediction, monic_external_transistions
+    get_similar_behaviors_for_less_weeks_behaviors, churn_prediction, monic_external_transistions, \
+    get_all_behaviors_barcodes_with_MONIC
 from utils.extra_functions import add_barcodes_to_labels
 
 
@@ -73,6 +74,7 @@ def main():
     endDate = '2017-10-23'
     frequency = '7D'
     dates = pd.date_range(startDate, endDate, freq=frequency)
+    periods = []
     table = '[motorola.com:sandbox:nielsen.appusage_athene_170605_to_171022_finished]'
     model = 'athene'
     country = 'BR'
@@ -139,12 +141,14 @@ def main():
     CL = False
     PL = False
     MO = False
+    CHURN = True
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
         start_date = dates[d]
         end_date = dates[d + 1]
         period = str(start_date.date()) + '_' + str(end_date.date())
+        periods += [period]
 
         if BQ:
             print "BigQuery sql ..."
@@ -297,29 +301,11 @@ def main():
             if d == 9:
                 z = 0
 
-
     if MO:
-        # barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
-
-        # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
-        # num_bar = barcodes.shape[0]
-        # plot_churn_rate(barcodes, dates, num_bar)
-
-        # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
-        # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
-
-        # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
-        # all_behaviors = get_all_behaviors_barcodes(all_labels)
-
-        # all_behaviors = pd.read_csv('results/all_behaviors_barcodes_without_first_week.csv', index_col=0, header=0)
-        #
-        # all_behaviors_together = put_same_behaviors_together(all_behaviors)
-        # get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
-
-        # trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-        # trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-        trashold = [0.4, 0.45, 0.5]
-        trasholdSplit = [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21]
+        trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+        trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+        # trashold = [0.45]
+        # trasholdSplit = [0.2]
 
         variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
 
@@ -327,22 +313,27 @@ def main():
             index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
             columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
 
-        birthsX = [0] * len(trashold) * len(trasholdSplit)
-        for d in xrange(len(dates[:9])):
-            start_date = dates[d]
-            print start_date
-            end_date = dates[d + 1]
-            end_date_2 = dates[d + 2]
-            periodX = str(start_date.date()) + '_' + str(end_date.date())
-            periodY = str(end_date.date()) + '_' + str(end_date_2.date())
-            all_labels = pd.read_csv('results/all_labels_barcodes.csv', index_col=0)
-            objetcsX = all_labels[periodX]
-            objectsY = all_labels[periodY]
-            birthsY = []
-            for t in trashold:
-                for ts in trasholdSplit:
-                    absorptionList, survivallist, deadList, splitList, birthList, n_clustersX, n_clustersY \
-                        = monic_external_transistions(t, ts, objetcsX, objectsY)
+        all_labels = pd.read_csv('results/all_labels_without_barcodes_out_first_week.csv', index_col=0)
+        barcodes = all_labels.index.values
+
+        behaviors = pd.DataFrame(index=barcodes, columns=periods[1:10])
+
+        for t in trashold:
+            print 't = ' + str(t)
+            for ts in trasholdSplit:
+                print '..... ts = ' + str(ts)
+                birthsX = 0.
+                for d in xrange(len(dates[:9])):
+                    start_date = dates[d]
+                    end_date = dates[d + 1]
+                    end_date_2 = dates[d + 2]
+                    periodX = str(start_date.date()) + '_' + str(end_date.date())
+                    periodY = str(end_date.date()) + '_' + str(end_date_2.date())
+                    objectsX = all_labels[periodX]
+                    objectsY = all_labels[periodY]
+
+                    absorptionList, survivallist, deathList, splitList, birthList, n_clustersX, n_clustersY, \
+                    clustersX, clustersY = monic_external_transistions(t, ts, objectsX, objectsY)
                     a = []
                     su = []
                     sp = []
@@ -356,22 +347,84 @@ def main():
                         for l in splitList:
                             sp += [l[0]]
 
-                    birthsY += [len(birthList)]
-                    results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))), float(len(set(su))), float(len(deadList)), float(len(set(sp))), 0]
+                    birthsY = float(len(birthList))
+                    results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))),
+                                                             float(len(set(su))), float(len(deathList)),
+                                                             float(len(set(sp))), birthsX]
+
+                    birthsX = birthsY
                     z = 0
-            results[(dates[d].date(), 'births')] = birthsX
-            birthsX = birthsY
-            z = 0
-        results.to_csv('results/new_new_variations_by_trasholds.csv', header=True, index=True)
+                    behaviors = get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList,
+                                                          all_labels, clustersX, behaviors, periodX, periodY)
 
-        # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
-        plot_results(results, trashold)
+                z = 0
+                behaviors['is_churn'] = all_labels['is_churn']
+                # results.to_csv('results/monitoring_thresholds/qty_by_variations/variations_by_trasholds_' + str(t) + '_'
+                #                + str(ts) + '.csv', header=True, index=True)
+                # behaviors.to_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_' + str(t)
+                #                  + '_' + str(ts) + '.csv', header=True, index=True, index_label='barcodes')
 
-        # all_behaviors_together = pd.read_csv('results/final_behaviors_together_qtd.csv', index_col=0, header=0)
-        #
-        # churn_prediction(all_behaviors, all_behaviors_together)
-        #
-        # z = 0
+                # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
+                # plot_results(results, trashold)
+
+                all_behaviors_together = put_same_behaviors_together(behaviors)
+                # all_behaviors_together.to_csv('results/monitoring_thresholds/behaviors/behaviors_together_without_first_week_'
+                #                               + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+
+                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
+                    all_behaviors_together.shape[0])
+                similar_behaviors_for_less_weeks = get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
+                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
+                    similar_behaviors_for_less_weeks.shape[0])
+                similar_behaviors_for_less_weeks.to_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_'
+                                          + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+        z = 0
+
+    if CHURN:
+
+        # barcodes = pd.read_csv('results/barcodes_170605_to_171022_churners.csv', index_col=0, header=0, parse_dates=['last_day'])
+
+        # barcodes['last_day'] = pd.to_datetime(barcodes['last_day'])
+        # num_bar = barcodes.shape[0]
+        # plot_churn_rate(barcodes, dates, num_bar)
+
+        # add_barcodes_to_labels(path_labels, path_discretization, path_outliers, dates, clusters):
+        # plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barcodes, path_distribution)
+
+        # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
+        # all_behaviors = get_all_behaviors_barcodes(all_labels)
+
+        all_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_0.5_0.2.csv',
+                                    index_col=0, header=0)
+        final_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_0.5_0.2.csv',
+                                             index_col=0, header=0)
+
+        final_behaviors = final_behaviors[final_behaviors['weeks'] > 7]
+        final_behaviors.ix[final_behaviors['churns'] == 2, 'churns'] = 1.
+        churns = final_behaviors.iloc[:, 1:10].replace(['loyal', 'C', 'miss', 'outlier'], [3., 2., 0., 1.])
+        from sklearn.preprocessing import LabelEncoder
+
+        # from sklearn.svm import SVC
+        # clf = SVC(gamma='auto').fit(churns.values, final_behaviors.iloc[:, 10].values)
+
+        from sklearn import tree
+        clf = tree.DecisionTreeClassifier(criterion='gini', random_state=100, min_samples_leaf=4, max_depth=8)
+        clf = clf.fit(churns.values, final_behaviors.iloc[:, 10].values)
+
+        import graphviz
+        # dot_data = tree.export_graphviz(clf, out_file=None)
+        # graph = graphviz.Source(dot_data)
+        # graph.render("iris")
+
+        dot_data = tree.export_graphviz(clf, out_file=None, feature_names=churns.columns.values)
+        graph = graphviz.Source(dot_data)
+        graph.render('results/tree.dot', view=True)
+        # graph.draw('results/testando_arvore_png.png')
+
+        z = 0
+        churn_prediction(all_behaviors, final_behaviors)
+
+        z = 0
 
 
 if __name__ == '__main__':
