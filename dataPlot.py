@@ -435,7 +435,6 @@ def plot_monitoring_results_2(results, trashold):
         print ty
         df = results.loc[(slice(None), slice(None)), (slice(None), ty)]
         df.columns = df.columns.droplevel(1)
-        # df.index = df.index.droplevel(1)
         new_dates = pd.to_datetime(df.columns)
         new_dates = new_dates.date
 
@@ -453,8 +452,6 @@ def plot_monitoring_results_2(results, trashold):
         ax.set_title(ty)
         fig.colorbar(surf)
         fig.tight_layout()
-        # rotate the axes and update
-
         # plt.show()
         z = 0
         plt.savefig('results/monitoring_thresholds/new_' + ty + '_suface_plot.png')
