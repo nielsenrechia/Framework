@@ -6,6 +6,8 @@ from math import floor
 import itertools
 import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 
 def get_idxs(max):
@@ -395,7 +397,7 @@ def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barco
         z = 0
 
 
-def plot_results(results, trashold):
+def plot_monitoring_results(results, trashold):
     types = ['births', 'splits', 'survivals', 'absorptions', 'deaths']
     markers = ['H', '^', 'v', '<', 'x', '>', '*']
 
@@ -423,3 +425,36 @@ def plot_results(results, trashold):
             plt.tight_layout()
             # plt.show()
             plt.savefig('results/monitoring_thresholds/new_' + ty + '_' + str(t) + '.png', pad_inches=0)
+
+
+def plot_monitoring_results_2(results, trashold):
+    types = ['births', 'splits', 'survivals', 'absorptions', 'deaths']
+    markers = ['H', '^', 'v', '<', 'x', '>', '*']
+
+    for ty in types:
+        print ty
+        df = results.loc[(slice(None), slice(None)), (slice(None), ty)]
+        df.columns = df.columns.droplevel(1)
+        # df.index = df.index.droplevel(1)
+        new_dates = pd.to_datetime(df.columns)
+        new_dates = new_dates.date
+
+        X = np.array([[0., 1., 2., 3., 4., 5., 6., 7., 8.]]*df.shape[0])
+        Y = np.array([df.index.get_level_values(1), df.index.get_level_values(1), df.index.get_level_values(1),
+                      df.index.get_level_values(1), df.index.get_level_values(1), df.index.get_level_values(1),
+                      df.index.get_level_values(1), df.index.get_level_values(1), df.index.get_level_values(1)]).T
+        Z = df.values
+        fig = plt.figure(facecolor='white', figsize=(9, 4))
+        ax = fig.add_subplot(1, 1, 1, projection='3d')
+        surf = ax.plot_surface(X, Y, Z, cmap=plt.cm.viridis, linewidth=0.2)
+        ax.set_xticklabels(new_dates)
+        plt.xticks(rotation=15)
+        ax.set_zticklabels(trashold)
+        ax.set_title(ty)
+        fig.colorbar(surf)
+        fig.tight_layout()
+        # rotate the axes and update
+
+        # plt.show()
+        z = 0
+        plt.savefig('results/monitoring_thresholds/new_' + ty + '_suface_plot.png')

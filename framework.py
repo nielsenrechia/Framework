@@ -3,7 +3,8 @@
 import sys
 # from dateutil import parser
 # from utils.bigquery import return_bq_query
-from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution, plot_results
+from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution, plot_monitoring_results, \
+    plot_monitoring_results_2
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
 from association_rules import association_rules
 from clustering import barcodes_distance, hac_clustering_barcodes
@@ -140,8 +141,8 @@ def main():
     DM = False
     CL = False
     PL = False
-    MO = False
-    CHURN = True
+    MO = True
+    CHURN = False
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
@@ -304,80 +305,83 @@ def main():
     if MO:
         trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
         trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-        # trashold = [0.45]
-        # trasholdSplit = [0.2]
-
-        variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
-
-        results = pd.DataFrame(
-            index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
-            columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
-
-        all_labels = pd.read_csv('results/all_labels_without_barcodes_out_first_week.csv', index_col=0)
-        barcodes = all_labels.index.values
-
-        behaviors = pd.DataFrame(index=barcodes, columns=periods[1:10])
-
-        for t in trashold:
-            print 't = ' + str(t)
-            for ts in trasholdSplit:
-                print '..... ts = ' + str(ts)
-                birthsX = 0.
-                for d in xrange(len(dates[:9])):
-                    start_date = dates[d]
-                    end_date = dates[d + 1]
-                    end_date_2 = dates[d + 2]
-                    periodX = str(start_date.date()) + '_' + str(end_date.date())
-                    periodY = str(end_date.date()) + '_' + str(end_date_2.date())
-                    objectsX = all_labels[periodX]
-                    objectsY = all_labels[periodY]
-
-                    absorptionList, survivallist, deathList, splitList, birthList, n_clustersX, n_clustersY, \
-                    clustersX, clustersY = monic_external_transistions(t, ts, objectsX, objectsY)
-                    a = []
-                    su = []
-                    sp = []
-                    if absorptionList:
-                        for l in absorptionList:
-                            a += [l[0]]
-                    if survivallist:
-                        for l in survivallist:
-                            su += [l[0]]
-                    if splitList:
-                        for l in splitList:
-                            sp += [l[0]]
-
-                    birthsY = float(len(birthList))
-                    results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))),
-                                                             float(len(set(su))), float(len(deathList)),
-                                                             float(len(set(sp))), birthsX]
-
-                    birthsX = birthsY
-                    z = 0
-                    behaviors = get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList,
-                                                          all_labels, clustersX, behaviors, periodX, periodY)
-
-                z = 0
-                behaviors['is_churn'] = all_labels['is_churn']
-                # results.to_csv('results/monitoring_thresholds/qty_by_variations/variations_by_trasholds_' + str(t) + '_'
-                #                + str(ts) + '.csv', header=True, index=True)
+        # # trashold = [0.45]
+        # # trasholdSplit = [0.2]
+        #
+        # variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
+        #
+        # results = pd.DataFrame(
+        #     index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
+        #     columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
+        #
+        # all_labels = pd.read_csv('results/all_labels_without_barcodes_out_first_week.csv', index_col=0)
+        # barcodes = all_labels.index.values
+        #
+        # behaviors = pd.DataFrame(index=barcodes, columns=periods[1:10])
+        #
+        # for t in trashold:
+        #     print 't = ' + str(t)
+        #     for ts in trasholdSplit:
+        #         print '..... ts = ' + str(ts)
+        #         birthsX = 0.
+        #         for d in xrange(len(dates[:9])):
+        #             start_date = dates[d]
+        #             end_date = dates[d + 1]
+        #             end_date_2 = dates[d + 2]
+        #             periodX = str(start_date.date()) + '_' + str(end_date.date())
+        #             periodY = str(end_date.date()) + '_' + str(end_date_2.date())
+        #             objectsX = all_labels[periodX]
+        #             objectsY = all_labels[periodY]
+        #
+        #             absorptionList, survivallist, deathList, splitList, birthList, n_clustersX, n_clustersY, \
+        #             clustersX, clustersY = monic_external_transistions(t, ts, objectsX, objectsY)
+        #             a = []
+        #             su = []
+        #             sp = []
+        #             if absorptionList:
+        #                 for l in absorptionList:
+        #                     a += [l[0]]
+        #             if survivallist:
+        #                 for l in survivallist:
+        #                     su += [l[0]]
+        #             if splitList:
+        #                 for l in splitList:
+        #                     sp += [l[0]]
+        #
+        #             birthsY = float(len(birthList))
+        #             results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))),
+        #                                                      float(len(set(su))), float(len(deathList)),
+        #                                                      float(len(set(sp))), birthsX]
+        #
+        #             birthsX = birthsY
+        #             z = 0
+        #             behaviors = get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList,
+        #                                                   all_labels, clustersX, behaviors, periodX, periodY)
+        #
+        #         z = 0
+        #         behaviors['is_churn'] = all_labels['is_churn']
+        #
                 # behaviors.to_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_' + str(t)
                 #                  + '_' + str(ts) + '.csv', header=True, index=True, index_label='barcodes')
 
-                # results = pd.read_csv('results/new_new_variations_by_trasholds.csv', index_col=[0,1], header=[0,1])
-                # plot_results(results, trashold)
 
-                all_behaviors_together = put_same_behaviors_together(behaviors)
-                # all_behaviors_together.to_csv('results/monitoring_thresholds/behaviors/behaviors_together_without_first_week_'
-                #                               + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
 
-                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
-                    all_behaviors_together.shape[0])
-                similar_behaviors_for_less_weeks = get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
-                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
-                    similar_behaviors_for_less_weeks.shape[0])
-                similar_behaviors_for_less_weeks.to_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_'
-                                          + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+                # all_behaviors_together = put_same_behaviors_together(behaviors)
+                # # all_behaviors_together.to_csv('results/monitoring_thresholds/behaviors/behaviors_together_without_first_week_'
+                # #                               + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+                #
+                # print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
+                #     all_behaviors_together.shape[0])
+                # similar_behaviors_for_less_weeks = get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
+                # print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
+                #     similar_behaviors_for_less_weeks.shape[0])
+                # similar_behaviors_for_less_weeks.to_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_'
+                #                           + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+        # results.to_csv('results/monitoring_thresholds/qty_by_variations/variations_by_trasholds_' + str(t) + '_'
+        #                + str(ts) + '.csv', header=True, index=True)
+        results = pd.read_csv('results/monitoring_thresholds/variations_by_trasholds_right.csv', index_col=[0,1], header=[0,1])
+        # plot_monitoring_results(results, trashold)
+        plot_monitoring_results_2(results, trashold)
         z = 0
 
     if CHURN:
