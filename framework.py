@@ -141,8 +141,8 @@ def main():
     DM = False
     CL = False
     PL = False
-    MO = True
-    CHURN = False
+    MO = False
+    CHURN = True
 
     for d in xrange(len(dates) - 1):
         t1 = dt.now()
@@ -305,78 +305,131 @@ def main():
     if MO:
         trashold = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
         trasholdSplit = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-        # # trashold = [0.45]
-        # # trasholdSplit = [0.2]
-        #
-        # variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
-        #
-        # results = pd.DataFrame(
-        #     index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
-        #     columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
-        #
-        # all_labels = pd.read_csv('results/all_labels_without_barcodes_out_first_week.csv', index_col=0)
-        # barcodes = all_labels.index.values
-        #
-        # behaviors = pd.DataFrame(index=barcodes, columns=periods[1:10])
-        #
-        # for t in trashold:
-        #     print 't = ' + str(t)
-        #     for ts in trasholdSplit:
-        #         print '..... ts = ' + str(ts)
-        #         birthsX = 0.
-        #         for d in xrange(len(dates[:9])):
-        #             start_date = dates[d]
-        #             end_date = dates[d + 1]
-        #             end_date_2 = dates[d + 2]
-        #             periodX = str(start_date.date()) + '_' + str(end_date.date())
-        #             periodY = str(end_date.date()) + '_' + str(end_date_2.date())
-        #             objectsX = all_labels[periodX]
-        #             objectsY = all_labels[periodY]
-        #
-        #             absorptionList, survivallist, deathList, splitList, birthList, n_clustersX, n_clustersY, \
-        #             clustersX, clustersY = monic_external_transistions(t, ts, objectsX, objectsY)
-        #             a = []
-        #             su = []
-        #             sp = []
-        #             if absorptionList:
-        #                 for l in absorptionList:
-        #                     a += [l[0]]
-        #             if survivallist:
-        #                 for l in survivallist:
-        #                     su += [l[0]]
-        #             if splitList:
-        #                 for l in splitList:
-        #                     sp += [l[0]]
-        #
-        #             birthsY = float(len(birthList))
-        #             results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))),
-        #                                                      float(len(set(su))), float(len(deathList)),
-        #                                                      float(len(set(sp))), birthsX]
-        #
-        #             birthsX = birthsY
-        #             z = 0
-        #             behaviors = get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList,
-        #                                                   all_labels, clustersX, behaviors, periodX, periodY)
-        #
-        #         z = 0
-        #         behaviors['is_churn'] = all_labels['is_churn']
-        #
+        # trashold = [0.45]
+        # trasholdSplit = [0.2]
+
+        variations = ['n_clustersX', 'n_clustersY', 'absorptions', 'survivals', 'deaths', 'splits', 'births']
+
+        results = pd.DataFrame(
+            index=pd.MultiIndex.from_product([trashold, trasholdSplit], names=['trashold', 'trasholdSplit']),
+            columns=pd.MultiIndex.from_product([dates[:9].date, variations], names=['dates', 'variations']))
+
+        all_labels = pd.read_csv('results/all_labels_without_barcodes_out_first_week.csv', index_col=0)
+        barcodes = all_labels.index.values
+
+        behaviors = pd.DataFrame(index=barcodes, columns=periods[1:10])
+
+        for t in trashold:
+            print 't = ' + str(t)
+            for ts in trasholdSplit:
+                print '..... ts = ' + str(ts)
+                birthsX = 0.
+                for d in xrange(len(dates[:9])):
+                    start_date = dates[d]
+                    end_date = dates[d + 1]
+                    end_date_2 = dates[d + 2]
+                    periodX = str(start_date.date()) + '_' + str(end_date.date())
+                    periodY = str(end_date.date()) + '_' + str(end_date_2.date())
+                    objectsX = all_labels[periodX]
+                    objectsY = all_labels[periodY]
+
+                    absorptionList, survivallist, deathList, splitList, birthList, n_clustersX, n_clustersY, \
+                    clustersX, clustersY = monic_external_transistions(t, ts, objectsX, objectsY)
+                    a = []
+                    su = []
+                    sp = []
+                    if absorptionList:
+                        for l in absorptionList:
+                            a += [l[0]]
+                    if survivallist:
+                        for l in survivallist:
+                            su += [l[0]]
+                    if splitList:
+                        for l in splitList:
+                            sp += [l[0]]
+
+                    birthsY = float(len(birthList))
+                    results.loc[(t, ts), dates[d].date()] = [n_clustersX, n_clustersY, float(len(set(a))),
+                                                             float(len(set(su))), float(len(deathList)),
+                                                             float(len(set(sp))), birthsX]
+
+                    birthsX = birthsY
+                    z = 0
+                    behaviors = get_all_behaviors_barcodes_with_MONIC(absorptionList, survivallist, deathList, splitList,
+                                                          all_labels, clustersX, behaviors, periodX, periodY)
+
+                z = 0
+                behaviors['is_churn'] = all_labels['is_churn']
+
                 # behaviors.to_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_' + str(t)
                 #                  + '_' + str(ts) + '.csv', header=True, index=True, index_label='barcodes')
 
 
 
-                # all_behaviors_together = put_same_behaviors_together(behaviors)
-                # # all_behaviors_together.to_csv('results/monitoring_thresholds/behaviors/behaviors_together_without_first_week_'
-                # #                               + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+                all_behaviors_together = put_same_behaviors_together(behaviors)
+                churn_behaviors = all_behaviors_together[(all_behaviors_together['churns'] > 0) & (all_behaviors_together['weeks'] > 7)]
+                print churn_behaviors.describe()
+                for col in churn_behaviors.columns[:9]:
+                    print churn_behaviors[col].value_counts()
+                loyal_behaviors = all_behaviors_together[(all_behaviors_together['churns'] == 0) & (all_behaviors_together['weeks'] > 7)]
+                print loyal_behaviors.describe()
+                for col in loyal_behaviors.columns[:9]:
+                    print loyal_behaviors[col].value_counts()
+                all_behaviors_together.to_csv('results/monitoring_thresholds/behaviors/behaviors_together_without_first_week_'
+                                              + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
+                    all_behaviors_together.shape[0])
+                similar_behaviors_for_less_weeks = get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
+                print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors decreases to = ' + str(
+                    similar_behaviors_for_less_weeks.shape[0])
+                similar_behaviors_for_less_weeks.to_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_'
+                                          + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+
+                header = behaviors.columns.values[:-1]
+                # y_true = behaviors.values[:, -1]
+                # data = dataset.values[:, :-1]
+                # barcodes = behaviors.index.values
                 #
-                # print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
-                #     all_behaviors_together.shape[0])
-                # similar_behaviors_for_less_weeks = get_similar_behaviors_for_less_weeks_behaviors(all_behaviors_together)
-                # print '........ for t = ' + str(t) + ' and ts = ' + str(ts) + ' total behaviors is = ' + str(
-                #     similar_behaviors_for_less_weeks.shape[0])
-                # similar_behaviors_for_less_weeks.to_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_'
-                #                           + str(t) + '_' + str(ts) + '.csv', header=True, index=True)
+                # predicted = []
+                # y_pred = []
+                # already_churn = similar_behaviors_for_less_weeks[similar_behaviors_for_less_weeks['weeks'] < 3]
+                # already_churn = already_churn.ix[:, 0:9]
+                # already_churn = already_churn.values.tolist()
+                # selected_behaviors = similar_behaviors_for_less_weeks
+                #
+                # for i in xrange(len(header) - 1):
+                #     if i == 0:
+                #         true_false = pd.DataFrame(((selected_behaviors[header[i]] != 'loyal') | (
+                #                     selected_behaviors[header[i + 1]] != 'loyal')) &
+                #                                   ((selected_behaviors[header[i]] != 'C') | (
+                #                                               selected_behaviors[header[i + 1]] != 'loyal')) &
+                #                                   ((selected_behaviors[header[i]] != 'outlier') | (
+                #                                               selected_behaviors[header[i + 1]] != 'outlier')),
+                #                                   columns=[header[i + 1]])
+                #     else:
+                #         true_false = pd.concat([true_false,
+                #                                 pd.DataFrame(((selected_behaviors[header[i]] != 'loyal') | (
+                #                                         selected_behaviors[header[i + 1]] != 'loyal')) &
+                #                                              ((selected_behaviors[header[i]] != 'C') | (
+                #                                                      selected_behaviors[header[i + 1]] != 'loyal')) &
+                #                                              ((selected_behaviors[header[i]] != 'outlier') | (
+                #                                                      selected_behaviors[header[i + 1]] != 'outlier')),
+                #                                              columns=[header[i + 1]])], axis=1)
+                #
+                # selected_behaviors = pd.concat([selected_behaviors, true_false.apply(pd.Series.value_counts, axis=1)],
+                #                                axis=1)
+                # header = selected_behaviors.columns.values
+                # header = np.delete(header, -1)
+                # header = np.delete(header, -1)
+                # header = np.append(header, ['False', 'True'])
+                # selected_behaviors.columns = header
+                # selected_behaviors = selected_behaviors.fillna(0)
+                # x = selected_behaviors['True'] * selected_behaviors['total_barcodes']
+                # w = x.sum()
+                # print '........ total mudancas = ' + str(w)
+                # z = 0
+
+
         # results.to_csv('results/monitoring_thresholds/qty_by_variations/variations_by_trasholds_' + str(t) + '_'
         #                + str(ts) + '.csv', header=True, index=True)
         results = pd.read_csv('results/monitoring_thresholds/variations_by_trasholds_right.csv', index_col=[0,1], header=[0,1])
@@ -398,34 +451,37 @@ def main():
         # all_labels = get_all_groups_barcodes(path_labels, path_outliers, dates, methods[0], clusters, barcodes)
         # all_behaviors = get_all_behaviors_barcodes(all_labels)
 
-        all_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_0.5_0.2.csv',
+        all_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/all_behaviors_without_first_week_0.5_0.15.csv',
                                     index_col=0, header=0)
-        final_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_0.5_0.2.csv',
+        final_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_0.5_0.15.csv',
                                              index_col=0, header=0)
 
-        final_behaviors = final_behaviors[final_behaviors['weeks'] > 7]
-        final_behaviors.ix[final_behaviors['churns'] == 2, 'churns'] = 1.
-        churns = final_behaviors.iloc[:, 1:10].replace(['loyal', 'C', 'miss', 'outlier'], [3., 2., 0., 1.])
-        from sklearn.preprocessing import LabelEncoder
 
-        # from sklearn.svm import SVC
-        # clf = SVC(gamma='auto').fit(churns.values, final_behaviors.iloc[:, 10].values)
-
-        from sklearn import tree
-        clf = tree.DecisionTreeClassifier(criterion='gini', random_state=100, min_samples_leaf=4, max_depth=8)
-        clf = clf.fit(churns.values, final_behaviors.iloc[:, 10].values)
-
-        import graphviz
-        # dot_data = tree.export_graphviz(clf, out_file=None)
+        # teste arvore e svm
+        # final_behaviors = final_behaviors[final_behaviors['weeks'] > 7]
+        # final_behaviors.ix[final_behaviors['churns'] == 2, 'churns'] = 1.
+        # churns = final_behaviors.iloc[:, 1:10].replace(['loyal', 'C', 'miss', 'outlier'], [3., 2., 0., 1.])
+        # from sklearn.preprocessing import LabelEncoder
+        #
+        # # from sklearn.svm import SVC
+        # # clf = SVC(gamma='auto').fit(churns.values, final_behaviors.iloc[:, 10].values)
+        #
+        # from sklearn import tree
+        # clf = tree.DecisionTreeClassifier(criterion='gini', random_state=100, min_samples_leaf=4, max_depth=8)
+        # clf = clf.fit(churns.values, final_behaviors.iloc[:, 10].values)
+        #
+        # import graphviz
+        # # dot_data = tree.export_graphviz(clf, out_file=None)
+        # # graph = graphviz.Source(dot_data)
+        # # graph.render("iris")
+        #
+        # dot_data = tree.export_graphviz(clf, out_file=None, feature_names=churns.columns.values)
         # graph = graphviz.Source(dot_data)
-        # graph.render("iris")
-
-        dot_data = tree.export_graphviz(clf, out_file=None, feature_names=churns.columns.values)
-        graph = graphviz.Source(dot_data)
-        graph.render('results/tree.dot', view=True)
-        # graph.draw('results/testando_arvore_png.png')
+        # graph.render('results/tree.dot', view=True)
+        # # graph.draw('results/testando_arvore_png.png')
 
         z = 0
+
         churn_prediction(all_behaviors, final_behaviors)
 
         z = 0

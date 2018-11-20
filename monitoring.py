@@ -237,7 +237,7 @@ def put_same_behaviors_together(barcodes_behaviors):
         w = 0
         if list(d[:-1]) in behaviors:
             count[behaviors.index(list(d[:-1]))] += 1
-            if d[-1] == 'YES':
+            if d[-1] == 'yes':
                 churns[behaviors.index(list(d[:-1]))] += 1
             else:
                 not_churns[behaviors.index(list(d[:-1]))] += 1
@@ -365,15 +365,46 @@ def churn_prediction(barcodes_behaviors, final_behaviors):
     selected_behaviors = selected_behaviors.fillna(0)
 
     #
-    # selected_behaviors.to_csv('results/changes_in_behaviors_to_predict_qtd.csv', header=True, index=True,
+    # selected_behaviors.to_csv('results/changes_in_behaviors_to_predict_qtd_0.5_0.15.csv', header=True, index=True,
     #                           index_label='comportamentos')
 
-    df1 = selected_behaviors[(selected_behaviors['total_barcodes'] < 50) & (selected_behaviors['missings'] > 0) & (selected_behaviors['outliers'] > 0)]
-    df2 = selected_behaviors[(selected_behaviors['total_barcodes'] < 50) & (selected_behaviors['cs'] >= 2) & (selected_behaviors['cs'] <= 5)]
-    df3 = selected_behaviors[(selected_behaviors['total_barcodes'] < 50) & (selected_behaviors['True'] >= 5) & (selected_behaviors['True'] <= 8)]
-    selected_behaviors = pd.concat([df1, df2, df3]).drop_duplicates().reset_index(drop=True)
+    churn_behaviors = selected_behaviors[(selected_behaviors['churns'] > 0) & (selected_behaviors['total_barcodes'] < 121)]
+    xchurn = churn_behaviors['churns'].sum()
+    xnchurn = churn_behaviors['not_churns'].sum()
+    print churn_behaviors.iloc[:, 10:].describe()
+    for col in churn_behaviors.columns[:9]:
+        print churn_behaviors[col].value_counts()
+        # plt.plot(churn_behaviors[col].value_counts())
+        # plt.show()
+        z = 0
+    loyal_behaviors = selected_behaviors[
+        (selected_behaviors['churns'] == 0) & (selected_behaviors['weeks'] > 7)]
+    print loyal_behaviors.describe()
+    for col in loyal_behaviors.columns[:9]:
+        print loyal_behaviors[col].value_counts()
+
+    df1 = selected_behaviors[(selected_behaviors['total_barcodes'] < 120) & (selected_behaviors['missings'] > 0) & (
+                selected_behaviors['outliers'] < 3)]
+    df2 = selected_behaviors[
+        (selected_behaviors['total_barcodes'] < 120) & (selected_behaviors['cs'] >= 0) & (selected_behaviors['cs'] <= 2)]
+    df3 = selected_behaviors[(selected_behaviors['total_barcodes'] < 120) & (selected_behaviors['True'] >= 4) & (
+                selected_behaviors['True'] <= 8)]
+
+    # df1 = selected_behaviors[(selected_behaviors['total_barcodes'] < 120) & (selected_behaviors['missings'] > 0) & (selected_behaviors['outliers'] <= 4)]
+    x1 = df1['churns'].sum()
+    x11 = df1['not_churns'].sum()
+    # df2 = selected_behaviors[(selected_behaviors['total_barcodes'] < 120) & (selected_behaviors['cs'] >= 1) & (selected_behaviors['cs'] <=4)]
+    x2 = df2['churns'].sum()
+    x22 = df2['not_churns'].sum()
+    # df3 = selected_behaviors[(selected_behaviors['total_barcodes'] < 72) & (selected_behaviors['True'] >= 2) & (selected_behaviors['True'] <= 8)]
+    x3 = df3['churns'].sum()
+    x33 = df3['not_churns'].sum()
+    selected_behaviors = pd.concat([df1, df2]).drop_duplicates().reset_index(drop=True)
+    st = selected_behaviors['churns'].sum()
+    stn = selected_behaviors['not_churns'].sum()
     # selected_behaviors = selected_behaviors[(selected_behaviors['False'] >= 0) & (selected_behaviors['False'] <= 1)]
-    selected_behaviors = selected_behaviors[(selected_behaviors['total_barcodes'] < 10)]
+    # selected_behaviors = selected_behaviors[(selected_behaviors['total_barcodes'] < 48)]
+    z = 0
 
     selected_behaviors = selected_behaviors.ix[:, 0:9]
     selected_behaviors = selected_behaviors.values.tolist()
@@ -389,6 +420,9 @@ def churn_prediction(barcodes_behaviors, final_behaviors):
         else:
             predicted.append(b)
             y_pred.append('no')
+
+    pvalues, pcounts = np.unique(y_pred, return_counts=True)
+    tvalues, tcounts = np.unique(y_true, return_counts=True)
 
     # np.savetxt(path+'churn_selected_all'+filename, np.vstack((np.asarray(predicted), np.asarray(y_pred))).T, delimiter=',', fmt='%s')
 
