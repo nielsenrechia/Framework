@@ -480,7 +480,135 @@ def main():
         # graph.render('results/tree.dot', view=True)
         # # graph.draw('results/testando_arvore_png.png')
 
-        z = 0
+        #teste SGD
+        import numpy as np
+        from sklearn import linear_model
+        from sklearn import preprocessing
+        from sklearn.preprocessing import OneHotEncoder
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import confusion_matrix
+        import itertools
+        from sklearn.metrics import classification_report
+        from io import StringIO
+        # from sklearn.preprocessing import OrdinalEncoder
+        # enc = OrdinalEncoder()
+
+        def process_data(X):
+            processedX = X.copy()
+            le = preprocessing.LabelEncoder()
+            enc = OneHotEncoder(handle_unknown='ignore', sparse=True)
+            for c in X.columns:
+                print c
+                # x = processedX.loc[:, c]
+                # t = X.loc[:, c]
+                # x = enc.fit_transform(processedX.loc[:, c].values.reshape(-1,1))
+                processedX.loc[:, c] = le.fit_transform(X.loc[:, c])
+                data_encoded = enc.fit_transform(processedX.loc[:, c].values.reshape(-1, 1)).toarray()
+                data_encoded = pd.DataFrame(data_encoded, columns=[str(c) + '_' + str(int(i)) for i in range(data_encoded.shape[1])],
+                                            index=processedX.index.values)
+                processedX.drop([c], axis= 1, inplace=True)
+                processedX = pd.concat([processedX, data_encoded], axis=1)
+
+            return processedX
+
+        X = all_behaviors.iloc[:, :8]
+        Y = all_behaviors.iloc[:, 8]
+        class_names = Y.unique()
+        print Y.value_counts()
+        # Yt = all_behaviors.iloc[1:, 8]
+
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
+
+
+        processedX_train = process_data(X_train)
+        processedX_test = process_data(X_test)
+
+        clf = linear_model.SGDClassifier(max_iter=1000, tol=1e-3)
+        Y_pred = clf.fit(processedX_train, Y_train).predict(processedX_test)
+
+        def plot_confusion_matrix(cm, classes,
+                                  normalize=False,
+                                  title='Confusion matrix',
+                                  cmap=plt.cm.Blues):
+            """
+            This function prints and plots the confusion matrix.
+            Normalization can be applied by setting `normalize=True`.
+            """
+            if normalize:
+                cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+                print("Normalized confusion matrix")
+            else:
+                print('Confusion matrix, without normalization')
+
+            print(cm)
+
+            plt.imshow(cm, interpolation='nearest', cmap=cmap)
+            plt.title(title)
+            plt.colorbar()
+            tick_marks = np.arange(len(classes))
+            plt.xticks(tick_marks, classes, rotation=45)
+            plt.yticks(tick_marks, classes)
+
+            fmt = '.2f' if normalize else 'd'
+            thresh = cm.max() / 2.
+            for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+                plt.text(j, i, format(cm[i, j], fmt),
+                         horizontalalignment="center",
+                         color="white" if cm[i, j] > thresh else "black")
+
+            plt.ylabel('True label')
+            plt.xlabel('Predicted label')
+            plt.tight_layout()
+
+        # Compute confusion matrix
+        cnf_matrix = confusion_matrix(Y_test, Y_pred)
+        np.set_printoptions(precision=2)
+
+        # Plot non-normalized confusion matrix
+        plt.figure()
+        plot_confusion_matrix(cnf_matrix, classes=class_names,
+                              title='Confusion matrix, without normalization')
+
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig('results/monitoring_thresholds/predicting_last_week.png', pad_inches=0)
+
+        # Plot normalized confusion matrix
+        plt.figure()
+        plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
+                              title='Normalized confusion matrix')
+
+        # # plt.show()
+        # plt.tight_layout()
+        # # plt.show()
+        # plt.savefig('results/monitoring_thresholds/predicting_last_week.png', pad_inches=0)
+
+        def classification_report_csv(report):
+            report_data = []
+            lines = report.split('\n')
+            for line in lines[2:-5]:
+                print line
+                row = {}
+                row_data = line.split(' ')
+                row_data = list(filter(None, row_data))
+                row['class'] = row_data[0]
+                row['precision'] = float(row_data[1])
+                row['recall'] = float(row_data[2])
+                row['f1_score'] = float(row_data[3])
+                row['support'] = float(row_data[4])
+                report_data.append(row)
+            dataframe = pd.DataFrame.from_dict(report_data)
+            dataframe.to_csv('results/monitoring_thresholds/predicting_last_week.csv', index=True)
+
+
+        #compute scores
+        report = classification_report(Y_test, Y_pred, target_names=class_names)
+        classification_report_csv(report)
+        print(classification_report(Y_test, Y_pred, target_names=class_names))
+
+
+        # result = pd.DataFrame(clf.predict(processedX_test))
+        # score = clf.score(processedX_test, Y_test)
 
         churn_prediction(all_behaviors, final_behaviors)
 
