@@ -6,7 +6,7 @@ import sys
 from dataPlot import plot_dendrogram, plot_churn_rate, plot_cluster_distribution, plot_monitoring_results, \
     plot_monitoring_results_2
 from dataPreprocess import remove_natives_pkgs, apps_matrix, select_by_min_usage, discretization, get_most_used_pkgs
-from association_rules import association_rules
+from association_rules import association_rules, findFPOF
 from clustering import barcodes_distance, hac_clustering_barcodes
 import pandas as pd
 from datetime import datetime as dt
@@ -456,6 +456,7 @@ def main():
         final_behaviors = pd.read_csv('results/monitoring_thresholds/behaviors/final_behaviors_together_qtd_0.5_0.15.csv',
                                              index_col=0, header=0)
 
+        x = findFPOF(all_behaviors)
 
         # teste arvore e svm
         # final_behaviors = final_behaviors[final_behaviors['weeks'] > 7]
@@ -480,7 +481,171 @@ def main():
         # graph.render('results/tree.dot', view=True)
         # # graph.draw('results/testando_arvore_png.png')
 
-        #teste SGD
+        # teste GSP
+
+        # all_bahaviors to gsp
+        new_all_behaviors = pd.DataFrame(columns=list('t'))
+        for c in all_behaviors.columns[:-1]:
+            week_data = pd.DataFrame(all_behaviors.loc[:, c])
+            week_data.columns = ['t']
+            new_all_behaviors = new_all_behaviors.append(week_data)
+            z = 0
+
+        new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_0.5_0.15_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors new to gsp
+        new_new_all_behaviors = pd.DataFrame()
+        before = pd.DataFrame(all_behaviors.iloc[:, :-2])
+        new_new_all_behaviors['t'] = before[before.columns].apply(lambda x: ','.join(x.astype(str)), axis=1)
+        after = pd.DataFrame(all_behaviors.iloc[:, -2])
+        after.columns = ['t']
+        new_new_all_behaviors = new_new_all_behaviors.append(after)
+        z = 0
+
+        new_new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_0.5_0.15_N_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss
+        all_behaviors = all_behaviors.loc[
+            (all_behaviors['2017-06-12_2017-06-19'] != 'miss') & (all_behaviors['2017-06-19_2017-06-26'] != 'miss') &
+            (all_behaviors['2017-06-26_2017-07-03'] != 'miss') & (all_behaviors['2017-07-03_2017-07-10'] != 'miss') &
+            (all_behaviors['2017-07-10_2017-07-17'] != 'miss') & (all_behaviors['2017-07-17_2017-07-24'] != 'miss') &
+            (all_behaviors['2017-07-24_2017-07-31'] != 'miss') & (all_behaviors['2017-07-31_2017-08-07'] != 'miss')]
+
+        all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_0.5_0.15.csv',
+            index=True, header=True)
+
+        # all_bahaviors without miss to GSP
+        new_all_behaviors = pd.DataFrame(columns=list('t'))
+        for c in all_behaviors.columns[:-1]:
+            week_data = pd.DataFrame(all_behaviors.loc[:, c])
+            week_data.columns = ['t']
+            new_all_behaviors = new_all_behaviors.append(week_data)
+            z = 0
+
+        new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_0.5_0.15_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss new to gsp
+        new_new_all_behaviors = pd.DataFrame()
+        before = pd.DataFrame(all_behaviors.iloc[:, :-2])
+        new_new_all_behaviors['t'] = before[before.columns].apply(lambda x: ','.join(x.astype(str)), axis=1)
+        after = pd.DataFrame(all_behaviors.iloc[:, -2])
+        after.columns = ['t']
+        new_new_all_behaviors = new_new_all_behaviors.append(after)
+        z = 0
+
+        new_new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_0.5_0.15_N_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss with not_loyal
+        all_behaviors.loc[all_behaviors['2017-08-07_2017-08-14'] != 'loyal', '2017-08-07_2017-08-14'] = 'not_loyal'
+
+        all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_with_not_loyal_0.5_0.15.csv',
+            index=True, header=True)
+
+        # all_bahaviors without miss with not_loyal to GSP
+        new_all_behaviors = pd.DataFrame(columns=list('t'))
+        for c in all_behaviors.columns[:-1]:
+            week_data = pd.DataFrame(all_behaviors.loc[:, c])
+            week_data.columns = ['t']
+            new_all_behaviors = new_all_behaviors.append(week_data)
+            z = 0
+
+        new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_with_not_loyal_0.5_0.15_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss with not_loyal new to gsp
+        new_new_all_behaviors = pd.DataFrame()
+        before = pd.DataFrame(all_behaviors.iloc[:, :-2])
+        new_new_all_behaviors['t'] = before[before.columns].apply(lambda x: ','.join(x.astype(str)), axis=1)
+        after = pd.DataFrame(all_behaviors.iloc[:, -2])
+        after.columns = ['t']
+        new_new_all_behaviors = new_new_all_behaviors.append(after)
+        z = 0
+
+        new_new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_and_miss_with_not_loyal_0.5_0.15_N_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss and outlier
+        all_behaviors = all_behaviors.loc[
+            (all_behaviors['2017-06-12_2017-06-19'] != 'outlier') & (all_behaviors['2017-06-19_2017-06-26'] != 'outlier') &
+            (all_behaviors['2017-06-26_2017-07-03'] != 'outlier') & (all_behaviors['2017-07-03_2017-07-10'] != 'outlier') &
+            (all_behaviors['2017-07-10_2017-07-17'] != 'outlier') & (all_behaviors['2017-07-17_2017-07-24'] != 'outlier') &
+            (all_behaviors['2017-07-24_2017-07-31'] != 'outlier') & (all_behaviors['2017-07-31_2017-08-07'] != 'outlier')]
+
+        all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_0.5_0.15.csv',
+            index=True, header=True)
+
+        # all_bahaviors without miss and outlier to GSP
+        new_all_behaviors = pd.DataFrame(columns=list('t'))
+        for c in all_behaviors.columns[:-1]:
+            week_data = pd.DataFrame(all_behaviors.loc[:, c])
+            week_data.columns = ['t']
+            new_all_behaviors = new_all_behaviors.append(week_data)
+            z = 0
+
+        new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_0.5_0.15_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss and outlier new to gsp
+        new_new_all_behaviors = pd.DataFrame()
+        before = pd.DataFrame(all_behaviors.iloc[:, :-2])
+        new_new_all_behaviors['t'] = before[before.columns].apply(lambda x: ','.join(x.astype(str)), axis=1)
+        after = pd.DataFrame(all_behaviors.iloc[:, -2])
+        after.columns = ['t']
+        new_new_all_behaviors = new_new_all_behaviors.append(after)
+        z = 0
+
+        new_new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_0.5_0.15_N_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss and outlier with not_loyal
+
+        all_behaviors.loc[all_behaviors['2017-08-07_2017-08-14'] != 'loyal', '2017-08-07_2017-08-14'] = 'not_loyal'
+
+        all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_with_not_loyal_0.5_0.15.csv',
+            index=True, header=True)
+
+        # all_bahaviors without miss and outlier with not_loyal to GSP
+        new_all_behaviors = pd.DataFrame(columns=list('t'))
+        for c in all_behaviors.columns[:-1]:
+            week_data = pd.DataFrame(all_behaviors.loc[:, c])
+            week_data.columns = ['t']
+            new_all_behaviors = new_all_behaviors.append(week_data)
+            z = 0
+
+        new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_with_not_loyal_0.5_0.15_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+        # all_bahaviors without miss and outlier with not_loyal new to gsp
+        new_new_all_behaviors = pd.DataFrame()
+        before = pd.DataFrame(all_behaviors.iloc[:, :-2])
+        new_new_all_behaviors['t'] = before[before.columns].apply(lambda x: ','.join(x.astype(str)), axis=1)
+        after = pd.DataFrame(all_behaviors.iloc[:, -2])
+        after.columns = ['t']
+        new_new_all_behaviors = new_new_all_behaviors.append(after)
+        z = 0
+
+        new_new_all_behaviors.to_csv(
+            'results/monitoring_thresholds/all_behaviors_without_first_week_miss_and_outlier_with_not_loyal_0.5_0.15_N_GSP.csv',
+            index=True, header=True, index_label='barcodes')
+
+
         import numpy as np
         from sklearn import linear_model
         from sklearn import preprocessing
