@@ -16,6 +16,40 @@ import itertools
 from numba import jit
 
 
+def get_all_groups_barcodes_xmeans(path_labels_xmeans, dates, barcodes):
+    header = barcodes.columns.values
+    for d in xrange(len(dates) - 11):
+        start_date = dates[d]
+        end_date = dates[d + 1]
+        period = str(start_date.date()) + '_' + str(end_date.date())
+
+        header = np.append(header, period)
+
+        labels_week = pd.read_csv(
+            path_labels_xmeans + 'matrix_' + period + '_xmeans.csv', index_col=0,
+            header=0, usecols=['barcodes', 'cluster'])
+
+        if d == 0:
+            first_week = period
+            all_labels = pd.concat([barcodes, labels_week], axis=1)
+            z = 0
+        else:
+            all_labels = pd.concat([all_labels, labels_week], axis=1)
+            z = 0
+
+        all_labels.columns = header
+        all_labels = all_labels.replace(['cluster1', 'cluster2', 'cluster3', 'cluster4'], [1., 2., 3., 4.])
+
+    all_labels_without_out_first_week = all_labels.dropna(subset=[first_week])
+    all_labels_without_out_first_week['weeks_out'] = all_labels_without_out_first_week.isnull().sum(axis=1)
+    all_labels_without_out_first_week.to_csv('results/all_labels_without_barcodes_out_first_week_xmeans.csv', header=True,
+                                             index_label='barcodes', index=True)
+    all_labels['weeks_out'] = all_labels.isnull().sum(axis=1)
+    # all_groups = all_groups[all_groups['weeks'] < 3]
+    all_labels.to_csv('results/all_labels_barcodes_xmeans.csv', header=True, index_label='barcodes', index=True)
+    z = 0
+
+
 def get_all_groups_barcodes(path_labels, path_outliers, dates, method, clusters, barcodes):
     header = barcodes.columns.values
     for d in xrange(len(dates) - 11):

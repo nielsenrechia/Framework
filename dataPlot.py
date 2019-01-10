@@ -341,6 +341,7 @@ def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barco
 
         outliers = pd.read_csv(path_outliers + 'outliers_' + period + 'csv.gz', index_col=None, header=None)
         qty_outliers = outliers.shape[0]
+        print qty_outliers
         outliers_churn = barcodes_churn[barcodes_churn['barcodes'].isin(outliers[0].values)]
         qty_outliers_churn = outliers_churn['barcodes'].count()
         outliers_week_churn = outliers_churn[(pd.to_datetime(outliers_churn['last_day']) < dates[d + 1]) &
@@ -393,7 +394,7 @@ def plot_cluster_distribution(path_labels, path_outliers, dates, clusters, barco
         # ax3.legend(wedges[0], ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'], loc="center")
 
         plt.tight_layout()
-        fig.savefig(path_distribution + 'cluster_distribution' + period + '.png', bbox_inches='tight', pad_inches=0)
+        # fig.savefig(path_distribution + 'cluster_distribution_' + period + '.png', bbox_inches='tight', pad_inches=0)
         z = 0
 
 

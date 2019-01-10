@@ -6,12 +6,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, calinski_harabaz_score
 from dataPlot import plot_best_apps_selection
 from matplotlib import pyplot as plt
-import rpy2.robjects as robjects
-import rpy2.robjects.numpy2ri
-rpy2.robjects.numpy2ri.activate()
-from rpy2.robjects import pandas2ri
-pandas2ri.activate()
-import rpy2.rlike.container as rlc
 import gc
 from scipy.spatial.distance import pdist, squareform, is_valid_y, is_valid_dm, num_obs_y, num_obs_dm
 from scipy.sparse import csr_matrix
